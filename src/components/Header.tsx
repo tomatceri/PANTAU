@@ -1,7 +1,7 @@
 import React from 'react';
 import { UserRole, Project } from '../types';
 import { PantauLogoMark } from './PantauLogo';
-import { HardHat, ShieldCheck, Calendar, FileText, Bell, ArrowLeft, LogOut } from 'lucide-react';
+import { HardHat, ShieldCheck, Calendar, FileText, Bell, ArrowLeft, LogOut, Database } from 'lucide-react';
 
 interface HeaderProps {
   currentRole: UserRole;
@@ -13,6 +13,7 @@ interface HeaderProps {
   onOpenEscalations: () => void;
   selectedProject: Project | null;
   onBackToProjects: () => void;
+  onOpenSupabaseModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -25,6 +26,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenEscalations,
   selectedProject,
   onBackToProjects,
+  onOpenSupabaseModal,
 }) => {
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-xs">
@@ -107,8 +109,21 @@ export const Header: React.FC<HeaderProps> = ({
           </nav>
         )}
 
-        {/* Zone 3: Locked Role Account Identity & Logout (No cross-role switching) */}
+        {/* Zone 3: Supabase Database Status, Role Account Identity & Logout */}
         <div className="flex items-center gap-1.5 shrink-0">
+          {onOpenSupabaseModal && (
+            <button
+              type="button"
+              onClick={onOpenSupabaseModal}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-[11.5px] 2xl:text-xs font-bold whitespace-nowrap transition-colors cursor-pointer shadow-2xs"
+              title="Database Supabase (gpestxvjcnjymoqlkefx)"
+            >
+              <Database className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span className="hidden md:inline">Supabase</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            </button>
+          )}
+
           <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-100 border border-slate-200 text-[11.5px] 2xl:text-xs font-bold text-slate-800 whitespace-nowrap">
             {currentRole === 'contractor' ? (
               <>

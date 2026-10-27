@@ -18,7 +18,9 @@ import { ProjectList } from './components/ProjectList';
 import { DualCalendar } from './components/DualCalendar';
 import { DailyReportForm } from './components/DailyReportForm';
 import { EscalationModal } from './components/EscalationModal';
-import { CheckCircle2, AlertTriangle, AlertCircle, CalendarDays } from 'lucide-react';
+import { SupabaseModal } from './components/SupabaseModal';
+import { saveReportToSupabase, loadReportsFromSupabase } from './services/supabaseReportService';
+import { CheckCircle2, AlertTriangle, AlertCircle, CalendarDays, Database } from 'lucide-react';
 
 const AUTH_SESSION_KEY = 'pantau_auth_session';
 
@@ -62,6 +64,27 @@ export default function App() {
   // Modals state
   const [isEscalationOpen, setIsEscalationOpen] = useState(false);
   const [escalationDate, setEscalationDate] = useState<string | undefined>(undefined);
+  const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
+  const [supabaseNotification, setSupabaseNotification] = useState<string>('');
+
+  // Initial load: Fetch stored reports from Supabase database
+  useEffect(() => {
+    let isMounted = true;
+    loadReportsFromSupabase().then((remoteReports) => {
+      if (!isMounted) return;
+      if (remoteReports && remoteReports.length > 0) {
+        setDailyReports((prev) => {
+          const map = new Map<string, DailyReport>();
+          prev.forEach((r) => map.set(r.id, r));
+          remoteReports.forEach((r) => map.set(r.id, r));
+          return Array.from(map.values());
+        });
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Real-time current date state (auto-updates per day dashboard is opened)
   const [todayStr, setTodayStr] = useState<string>(() => getRealTodayStr());
@@ -135,7 +158,7 @@ export default function App() {
     setActiveTab('daily');
   };
 
-  // Handler: Add or update a daily report
+  // Handler: Add or update a daily report (stores in React state & Supabase database)
   const handleSaveDailyReport = (updatedReport: DailyReport) => {
     setDailyReports((prev) => {
       const index = prev.findIndex((r) => r.id === updatedReport.id);
@@ -145,6 +168,16 @@ export default function App() {
         return copy;
       }
       return [...prev, updatedReport];
+    });
+
+    // Store all form "laporan harian" in Supabase database
+    saveReportToSupabase(updatedReport).then((res) => {
+      if (res.success) {
+        setSupabaseNotification(`✓ Laporan ${updatedReport.reportNumber || updatedReport.reportDate} berhasil disimpan ke Supabase!`);
+      } else {
+        setSupabaseNotification(`ℹ Data disimpan lokal (${res.message})`);
+      }
+      setTimeout(() => setSupabaseNotification(''), 4500);
     });
   };
 
@@ -255,7 +288,16 @@ export default function App() {
           setSelectedProject(null);
           setSelectedReportDate(null);
         }}
+        onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
       />
+
+      {/* Floating Supabase Sync Notification */}
+      {supabaseNotification && (
+        <div className="fixed top-18 right-4 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold border border-slate-700">
+          <Database className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{supabaseNotification}</span>
+        </div>
+      )}
 
       {/* Main Viewport */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
@@ -477,6 +519,16 @@ export default function App() {
           onSelectDate={handleSelectDate}
         />
       )}
+
+      {/* Supabase Database Sync Modal */}
+      <SupabaseModal
+        isOpen={isSupabaseModalOpen}
+        onClose={() => setIsSupabaseModalOpen(false)}
+        dailyReports={dailyReports}
+        onReportsReloaded={(newReports) => {
+          setDailyReports(newReports);
+        }}
+      />
 
       {/* Clean Professional Footer */}
       <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500 mt-auto">

@@ -86,6 +86,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
 
   // PDF Preview before download modal
   const [showPdfPreviewModal, setShowPdfPreviewModal] = useState(false);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
 
   // Excel Cell Format & Paste Modal State
   const [excelModalTarget, setExcelModalTarget] = useState<'boq' | 'bom' | 'manpower' | 'equipment' | null>(null);
@@ -4103,11 +4104,22 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+          {saveSuccessMsg && (
+            <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>{saveSuccessMsg}</span>
+            </span>
+          )}
+
           <button
             type="button"
-            onClick={() => onSaveReport(formData)}
-            className="flex-1 sm:flex-initial px-4 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors text-center"
+            onClick={() => {
+              onSaveReport(formData);
+              setSaveSuccessMsg('✓ Laporan tersimpan & tersinkron ke Supabase');
+              setTimeout(() => setSaveSuccessMsg(''), 4000);
+            }}
+            className="flex-1 sm:flex-initial px-4 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors text-center cursor-pointer"
           >
             Simpan Draft
           </button>
@@ -4116,7 +4128,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
             <button
               type="button"
               onClick={handleSubmitToPmo}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-sm transition-all"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow-sm transition-all cursor-pointer"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Kirim Laporan Resmi ke PMO</span>
