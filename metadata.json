@@ -1,0 +1,8 @@
+{
+  "name": "Remix Remix Shift 2 - 26/10/2026",
+  "description": "Zero-delay construction \u0026 infrastructure progress reporting platform with dual-way interactive calendar, automated H+2 escalation alerts, smart draft copy, watermarked photo capture, digital signatures, and standardized PDF/ZIP exports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
