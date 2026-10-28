@@ -19,7 +19,15 @@ import { DualCalendar } from './components/DualCalendar';
 import { DailyReportForm } from './components/DailyReportForm';
 import { EscalationModal } from './components/EscalationModal';
 import { SupabaseModal } from './components/SupabaseModal';
-import { saveReportToSupabase, loadReportsFromSupabase } from './services/supabaseReportService';
+import { 
+  saveReportToSupabase, 
+  loadReportsFromSupabase,
+  inferProjectsFromReports,
+  getStoredCustomProjects,
+  saveStoredCustomProjects,
+  subscribeToSupabaseReports,
+  registerProjectMeta
+} from './services/supabaseReportService';
 import { CheckCircle2, AlertTriangle, AlertCircle, CalendarDays, Database } from 'lucide-react';
 
 const AUTH_SESSION_KEY = 'pantau_auth_session';
@@ -49,8 +57,20 @@ export default function App() {
     return null;
   });
 
-  // Application State
-  const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
+  // Application State - Initialized with initial projects + any custom projects saved in browser
+  const [projects, setProjects] = useState<Project[]>(() => {
+    const stored = getStoredCustomProjects();
+    const map = new Map<string, Project>();
+    INITIAL_PROJECTS.forEach((p) => {
+      map.set(p.id, p);
+      registerProjectMeta(p);
+    });
+    stored.forEach((p) => {
+      map.set(p.id, p);
+      registerProjectMeta(p);
+    });
+    return Array.from(map.values());
+  });
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const currentRole: UserRole = authSession?.role || 'contractor';
   const [activeTab, setActiveTab] = useState<'calendar' | 'daily'>('calendar');
@@ -61,17 +81,18 @@ export default function App() {
   // Active daily report being edited / viewed
   const [selectedReportDate, setSelectedReportDate] = useState<string | null>(null);
 
-  // Modals state
+  // Modals state & Cloud sync status
   const [isEscalationOpen, setIsEscalationOpen] = useState(false);
   const [escalationDate, setEscalationDate] = useState<string | undefined>(undefined);
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
   const [supabaseNotification, setSupabaseNotification] = useState<string>('');
+  const [isSyncingCloud, setIsSyncingCloud] = useState<boolean>(false);
 
-  // Initial load: Fetch stored reports from Supabase database
-  useEffect(() => {
-    let isMounted = true;
-    loadReportsFromSupabase().then((remoteReports) => {
-      if (!isMounted) return;
+  // Function to sync both projects and reports from Supabase (Cloud & Vercel shared DB)
+  const syncFromSupabase = React.useCallback(async (silent = false) => {
+    if (!silent) setIsSyncingCloud(true);
+    try {
+      const remoteReports = await loadReportsFromSupabase();
       if (remoteReports && remoteReports.length > 0) {
         setDailyReports((prev) => {
           const map = new Map<string, DailyReport>();
@@ -79,12 +100,45 @@ export default function App() {
           remoteReports.forEach((r) => map.set(r.id, r));
           return Array.from(map.values());
         });
+
+        // Automatically infer and discover any projects from remote reports
+        setProjects((prev) => {
+          const updated = inferProjectsFromReports(remoteReports, prev);
+          return updated;
+        });
+
+        if (!silent) {
+          setSupabaseNotification(`✓ Berhasil menyinkronkan data dari Cloud/Vercel (${remoteReports.length} laporan)`);
+          setTimeout(() => setSupabaseNotification(''), 4000);
+        }
       }
-    });
-    return () => {
-      isMounted = false;
-    };
+    } catch (err) {
+      console.warn('[Sync] Failed to sync from cloud:', err);
+    } finally {
+      if (!silent) setIsSyncingCloud(false);
+    }
   }, []);
+
+  // Initial load & automatic sync with Cloud / Vercel
+  useEffect(() => {
+    syncFromSupabase(true);
+
+    // Auto-sync whenever user focuses the window (e.g. returning from Vercel tab)
+    const handleWindowFocus = () => {
+      syncFromSupabase(true);
+    };
+    window.addEventListener('focus', handleWindowFocus);
+
+    // Subscribe to realtime database changes from Supabase
+    const unsubscribe = subscribeToSupabaseReports(() => {
+      syncFromSupabase(true);
+    });
+
+    return () => {
+      window.removeEventListener('focus', handleWindowFocus);
+      unsubscribe();
+    };
+  }, [syncFromSupabase]);
 
   // Real-time current date state (auto-updates per day dashboard is opened)
   const [todayStr, setTodayStr] = useState<string>(() => getRealTodayStr());
@@ -181,9 +235,14 @@ export default function App() {
     });
   };
 
-  // Handler: Add project
+  // Handler: Add project (persist to memory, localStorage, and metadata)
   const handleAddProject = (newProj: Project) => {
-    setProjects((prev) => [...prev, newProj]);
+    registerProjectMeta(newProj);
+    setProjects((prev) => {
+      const next = [...prev, newProj];
+      saveStoredCustomProjects(next);
+      return next;
+    });
   };
 
   // Handler: Trigger escalation modal for a date
@@ -198,9 +257,11 @@ export default function App() {
 
   // Handler: Toggle project completion status (Active vs Completed)
   const handleToggleProjectStatus = (projectId: string, newStatus: 'Active' | 'Completed') => {
-    setProjects((prev) =>
-      prev.map((p) => (p.id === projectId ? { ...p, status: newStatus } : p))
-    );
+    setProjects((prev) => {
+      const next = prev.map((p) => (p.id === projectId ? { ...p, status: newStatus } : p));
+      saveStoredCustomProjects(next);
+      return next;
+    });
     if (selectedProject?.id === projectId) {
       setSelectedProject((prev) => (prev ? { ...prev, status: newStatus } : null));
     }
@@ -329,6 +390,8 @@ export default function App() {
             }}
             onAddProject={handleAddProject}
             onToggleProjectStatus={handleToggleProjectStatus}
+            onSyncFromCloud={() => syncFromSupabase(false)}
+            isSyncingCloud={isSyncingCloud}
           />
         ) : (
           /* VIEW 2: INSIDE SELECTED PROJECT WORKSPACE */

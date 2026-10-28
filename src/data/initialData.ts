@@ -48,6 +48,20 @@ export const INITIAL_PROJECTS: Project[] = [
     description: 'Deepwater container berth extension, precast driven piles, and heavy-duty apron pavement. Pekerjaan fisik telah selesai 100% dan memasuki masa pemeliharaan (FHO).',
     targetSubmissionHour: 9,
   },
+  {
+    id: 'proj-1793091923901',
+    name: 'Renewal Tube Settler',
+    code: 'RTS-01',
+    contractorName: 'PT. BESTINDO PUTRA MANDIRI',
+    pmoLead: 'Simun Riyanto (PT AubreyKeylaRapli)',
+    location: 'Unit Sedimentasi & Tube Settler',
+    coordinates: '-6.2088° S, 106.8456° E',
+    startDate: '2026-10-01',
+    targetDate: '2027-12-31',
+    status: 'Active',
+    description: 'Pekerjaan perbaikan, penggantian, dan renewal tube settler serta support UNP dan hanging rod unit sedimentasi.',
+    targetSubmissionHour: 9,
+  },
 ];
 
 function formatDate(year: number, month: number, day: number): string {
@@ -56,7 +70,84 @@ function formatDate(year: number, month: number, day: number): string {
   return `${year}-${m}-${d}`;
 }
 
-export const INITIAL_DAILY_REPORTS: DailyReport[] = [
+export const RAW_INITIAL_DAILY_REPORTS: DailyReport[] = [
+  // PROJ-1793091923901: Renewal Tube Settler (Input & Uji Coba dari Vercel)
+  {
+    id: 'rep-1793091935223',
+    projectId: 'proj-1793091923901',
+    reportNumber: 'REP-D-20261027',
+    reportDate: '2026-10-27',
+    nomorBpmpo: 'BPMPO/2026/X/027',
+    docCode: 'AAA/CONS/FM-014 Rev01',
+    docEffectiveDate: '14 Juli 2025',
+    docFooterCode: 'Daily Report-P2-ND000-JDU-09',
+    approvalStatus: 'draft',
+    submissionTiming: 'upcoming',
+    weather: { condition: 'Sunny', downtimeHours: 0, claimEligible: false, delayReason: '' },
+    hourlyWeather: createDefault24hWeather('clear'),
+    manpower: [
+      { id: 'mp-1', trade: 'Teknisi', count: 10, hoursWorked: 8 },
+      { id: 'mp-2', trade: 'HSE', count: 1, hoursWorked: 8 },
+    ],
+    equipment: [
+      { id: 'eq-1', equipmentName: 'APAR', count: 1, operationalHours: 0, status: 'Standby' },
+      { id: 'eq-2', equipmentName: 'Chain Block', count: 1, operationalHours: 0, status: 'Standby' },
+      { id: 'eq-3', equipmentName: 'Tabung Gas 12 kg', count: 1, operationalHours: 0, status: 'Standby' },
+      { id: 'eq-4', equipmentName: 'Tabung Oksigen', count: 1, operationalHours: 0, status: 'Standby' },
+      { id: 'eq-5', equipmentName: 'Mesin Las', count: 1, operationalHours: 0, status: 'Standby' },
+      { id: 'eq-6', equipmentName: 'Mesin Gerindra', count: 1, operationalHours: 8, status: 'Operating' },
+      { id: 'eq-7', equipmentName: 'Mesin Bor', count: 1, operationalHours: 0, status: 'Standby' },
+    ],
+    boqItems: [
+      { id: 'boq-1', kode: 'BQ-1', deskripsi: 'MOS', satuan: 'ls', install: 0 },
+      { id: 'boq-2', kode: 'BQ-2', deskripsi: 'Hanging rod', satuan: 'btg', install: 0 },
+      { id: 'boq-3', kode: 'BQ-3', deskripsi: 'Support atas bawah UNP', satuan: 'btg', install: 0 },
+      { id: 'boq-4', kode: 'BQ-4', deskripsi: 'Support UNP', satuan: 'btg', install: 0 },
+    ],
+    bomItems: [
+      { id: 'bom-1', kode: 'M-01', jenisMaterial: 'Material M-01', satuan: 'unit', install: 0 },
+    ],
+    attendees: [
+      { id: 'att-1', nama: 'Adhe Juliawaludin', jabatan: 'Supervisor', instansi: 'PT. BESTINDO PUTRA MANDIRI' },
+      { id: 'att-2', nama: 'Anis Sulfuad', jabatan: 'HSE', instansi: 'PT. BESTINDO PUTRA MANDIRI' },
+    ],
+    materials: [],
+    activities: [
+      { id: 'act-rts-1', description: 'Pekerjaan fabrikasi & penyiapan support UNP dan hanging rod Tube Settler', location: 'Unit Sedimentasi', progressPercent: 25, status: 'In Progress' },
+    ],
+    photos: [
+      {
+        id: 'photo-rts-1',
+        url: '/src/assets/images/site_rebar_foundation_1792650073415.jpg',
+        caption: 'Dokumentasi Lapangan Renewal Tube Settler',
+        timestamp: '27/10/2026, 16.24.58',
+        coordinates: '-6.2088° S, 106.8456° E',
+        projectName: 'Renewal Tube Settler',
+        watermarked: false,
+      },
+    ],
+    contractorSignatory: {
+      title: 'Project Manager',
+      signedBy: 'Winduri Purba',
+      roleLabel: 'Project Manager',
+      companyName: 'PT. BESTINDO PUTRA MANDIRI',
+      timestamp: '2026-10-27 16:25:00',
+    },
+    consultantSignatory: {
+      title: 'Project Manager',
+      signedBy: 'Yodi Ade Putra',
+      roleLabel: 'Project Manager Konsultan,',
+      companyName: 'PT KeylaAubreyRapli',
+    },
+    pmoSignatory: {
+      title: 'Plant Manager',
+      signedBy: 'Simun Riyanto',
+      roleLabel: 'Project Manager,',
+      companyName: 'PT AubreyKeylaRapli',
+    },
+    revisionNotes: [],
+  },
+
   // PROJ-0: Pemasangan pipa transmisi Air Baku unit Prasedimentasi (Official Form AAA/CONS/FM-014)
   {
     id: 'rep-pras-2026-10-14',
@@ -829,6 +920,19 @@ export const INITIAL_DAILY_REPORTS: DailyReport[] = [
     revisionNotes: [],
   },
 ];
+
+export const INITIAL_DAILY_REPORTS: DailyReport[] = RAW_INITIAL_DAILY_REPORTS.map((rep) => ({
+  ...rep,
+  nomorBpmpo: rep.nomorBpmpo && rep.nomorBpmpo.trim() !== ''
+    ? rep.nomorBpmpo 
+    : (rep.projectId === 'proj-0' ? 'BPMPO/2026/X/014' : `BPMPO/2026/X/${rep.reportDate.split('-')[2] || '001'}`),
+  docCode: rep.docCode || 'AAA/CONS/FM-014 Rev01',
+  docEffectiveDate: rep.docEffectiveDate || '14 Juli 2025',
+  docFooterCode: rep.docFooterCode || 'Daily Report-P2-ND000-JDU-09',
+  attendees: (rep.attendees && rep.attendees.length > 0) ? rep.attendees : DEFAULT_ATTENDEES,
+  boqItems: (rep.boqItems && rep.boqItems.length > 0) ? rep.boqItems : DEFAULT_BOQ_ITEMS,
+  bomItems: (rep.bomItems && rep.bomItems.length > 0) ? rep.bomItems : DEFAULT_BOM_ITEMS,
+}));
 
 export const INITIAL_WEEKLY_REPORTS: WeeklyReport[] = [
   {

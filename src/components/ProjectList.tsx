@@ -4,7 +4,7 @@ import {
   Building2, MapPin, Plus, ArrowRight, CheckCircle2, 
   AlertTriangle, AlertCircle, Calendar, Clock, Eye, 
   ShieldCheck, HardHat, Info, ChevronRight, CheckCheck, 
-  RotateCcw 
+  RotateCcw, RefreshCw 
 } from 'lucide-react';
 import { getRealTodayStr } from '../utils/formDefaults';
 import { getMonthCalendarSummary, parseLocalDate } from '../utils/calendarStatus';
@@ -17,6 +17,8 @@ interface ProjectListProps {
   onSelectReportForReview: (project: Project, reportDate: string) => void;
   onAddProject: (newProject: Project) => void;
   onToggleProjectStatus?: (projectId: string, newStatus: 'Active' | 'Completed') => void;
+  onSyncFromCloud?: () => Promise<void>;
+  isSyncingCloud?: boolean;
 }
 
 export const ProjectList: React.FC<ProjectListProps> = ({
@@ -27,6 +29,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   onAddProject,
   onSelectReportForReview,
   onToggleProjectStatus,
+  onSyncFromCloud,
+  isSyncingCloud,
 }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [projectFilterTab, setProjectFilterTab] = useState<'all' | 'active' | 'completed'>('all');
@@ -352,10 +356,23 @@ export const ProjectList: React.FC<ProjectListProps> = ({
             </button>
           </div>
 
+          {onSyncFromCloud && (
+            <button
+              type="button"
+              onClick={onSyncFromCloud}
+              disabled={isSyncingCloud}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors shrink-0 shadow-xs cursor-pointer disabled:opacity-50"
+              title="Perbarui & sinkronkan data proyek serta laporan dari Vercel / Cloud Supabase"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCloud ? 'animate-spin text-emerald-600' : 'text-emerald-700'}`} />
+              <span>{isSyncingCloud ? 'Sinkronisasi...' : 'Sinkron dari Vercel / Cloud'}</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors shrink-0 shadow-xs"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors shrink-0 shadow-xs cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Tambah Proyek Baru</span>
