@@ -17,57 +17,61 @@ async function preloadPhotoForPdf(url: string, caption: string): Promise<Preload
   if (!url) return null;
 
   return new Promise((resolve) => {
-    // If it's already a Data URL
-    if (url.startsWith('data:image/')) {
-      const isPng = url.startsWith('data:image/png');
-      const img = new Image();
-      img.onload = () => {
-        resolve({
-          dataUrl: url,
-          format: isPng ? 'PNG' : 'JPEG',
-          width: img.naturalWidth || img.width || 800,
-          height: img.naturalHeight || img.height || 600,
-          caption,
-        });
-      };
-      img.onerror = () => {
-        resolve({
-          dataUrl: url,
-          format: isPng ? 'PNG' : 'JPEG',
-          width: 800,
-          height: 600,
-          caption,
-        });
-      };
-      img.src = url;
-      return;
-    }
-
-    // If it's a URL or local asset path
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    if (!url.startsWith('data:')) {
+      img.crossOrigin = 'anonymous';
+    }
     img.onload = () => {
       try {
+        const targetW = 600;
+        const targetH = 750; // 4:5 uniform aspect ratio matching reference screenshot
         const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth || img.width;
-        canvas.height = img.naturalHeight || img.height;
+        canvas.width = targetW;
+        canvas.height = targetH;
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          resolve(null);
+          resolve({
+            dataUrl: url,
+            format: url.startsWith('data:image/png') ? 'PNG' : 'JPEG',
+            width: img.naturalWidth || 800,
+            height: img.naturalHeight || 600,
+            caption,
+          });
           return;
         }
-        ctx.drawImage(img, 0, 0);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+
+        const natW = img.naturalWidth || img.width || targetW;
+        const natH = img.naturalHeight || img.height || targetH;
+        const srcAspect = natW / natH;
+        const tgtAspect = targetW / targetH;
+
+        let sx = 0, sy = 0, sw = natW, sh = natH;
+        if (srcAspect > tgtAspect) {
+          sw = natH * tgtAspect;
+          sx = (natW - sw) / 2;
+        } else {
+          sh = natW / tgtAspect;
+          sy = (natH - sh) / 2;
+        }
+
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
         resolve({
           dataUrl,
           format: 'JPEG',
-          width: canvas.width,
-          height: canvas.height,
+          width: targetW,
+          height: targetH,
           caption,
         });
       } catch (err) {
-        console.warn('Canvas toDataURL failed in preloadPhotoForPdf:', err);
-        resolve(null);
+        console.warn('Canvas crop fallback:', err);
+        resolve({
+          dataUrl: url,
+          format: 'JPEG',
+          width: 600,
+          height: 750,
+          caption,
+        });
       }
     };
     img.onerror = (err) => {
@@ -127,11 +131,6 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
     }
     return dateStr;
   };
-
-  // Outer document border
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.3);
-  doc.rect(leftX, 10, tableWidth, 275);
 
   let y = 10;
 
@@ -291,10 +290,9 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
   doc.rect(tkX + 6, y, 34, 4.5, 'FD');
   doc.rect(tkX + 40, y, 10, 4.5, 'FD');
 
-  doc.rect(eqX, y, 42, 4.5, 'FD');
-  doc.rect(eqX + 42, y, 11, 4.5, 'FD');
-  doc.rect(eqX + 53, y, 14, 4.5, 'FD');
-  doc.rect(eqX + 67, y, 15, 4.5, 'FD');
+  doc.rect(eqX, y, 46, 4.5, 'FD');
+  doc.rect(eqX + 46, y, 14, 4.5, 'FD');
+  doc.rect(eqX + 60, y, 22, 4.5, 'FD');
 
   doc.rect(cwX, y, 22, 4.5, 'FD');
   doc.rect(cwX + 22, y, 22, 4.5, 'FD');
@@ -306,10 +304,9 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
   doc.text('Tenaga Kerja', tkX + 23, y + 3.2, { align: 'center' });
   doc.text('Orang', tkX + 45, y + 3.2, { align: 'center' });
 
-  doc.text('Peralatan', eqX + 21, y + 3.2, { align: 'center' });
-  doc.text('Jumlah', eqX + 47.5, y + 3.2, { align: 'center' });
-  doc.text('Stok', eqX + 60, y + 3.2, { align: 'center' });
-  doc.text('Keterangan', eqX + 74.5, y + 3.2, { align: 'center' });
+  doc.text('Peralatan', eqX + 23, y + 3.2, { align: 'center' });
+  doc.text('Jumlah', eqX + 53, y + 3.2, { align: 'center' });
+  doc.text('Keterangan', eqX + 71, y + 3.2, { align: 'center' });
 
   doc.text('Cuaca', cwX + 11, y + 3.2, { align: 'center' });
   doc.text('Cuaca', cwX + 33, y + 3.2, { align: 'center' });
@@ -341,19 +338,18 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
       doc.text(String(mp.count), tkX + 45, curY + 2.7, { align: 'center' });
     }
 
-    // Peralatan
-    doc.rect(eqX, curY, 42, rowH);
-    doc.rect(eqX + 42, curY, 11, rowH);
-    doc.rect(eqX + 53, curY, 14, rowH);
-    doc.rect(eqX + 67, curY, 15, rowH);
+    // Peralatan (Columns: Nama Peralatan, Jumlah Unit, Keterangan)
+    doc.rect(eqX, curY, 46, rowH);
+    doc.rect(eqX + 46, curY, 14, rowH);
+    doc.rect(eqX + 60, curY, 22, rowH);
     const eq = equipment[i];
     if (eq) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(5.5);
       doc.text(eq.equipmentName.substring(0, 26), eqX + 1.5, curY + 2.7);
-      doc.text(String(eq.count), eqX + 47.5, curY + 2.7, { align: 'center' });
-      const eqStatusText = !eq.status ? '-' : eq.status === 'Operating' ? 'Operasi' : eq.status === 'Standby' ? 'Standby' : eq.status === 'Breakdown' ? 'Breakdown' : eq.status;
-      doc.text(eqStatusText.substring(0, 10), eqX + 68, curY + 2.7);
+      doc.text(String(eq.count ?? 0), eqX + 53, curY + 2.7, { align: 'center' });
+      const eqStatusText = !eq.status ? '-' : eq.status;
+      doc.text(eqStatusText.substring(0, 15), eqX + 61.5, curY + 2.7);
     }
 
     // Cuaca (Morning & Afternoon)
@@ -364,32 +360,33 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
 
     const mH = morningHours[i];
     const aH = afternoonHours[i];
-    const mC = hourlyWeather[mH] || 'C';
-    const aC = hourlyWeather[aH] || 'C';
+    const mC = hourlyWeather[mH] || '';
+    const aC = hourlyWeather[aH] || '';
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(5);
     doc.text(mH, cwX + 1.5, curY + 2.7);
     doc.setFont('helvetica', 'bold');
-    doc.text(mC, cwX + 17.5, curY + 2.7, { align: 'center' });
+    doc.text(mC || '-', cwX + 17.5, curY + 2.7, { align: 'center' });
 
     doc.setFont('helvetica', 'normal');
     doc.text(aH, cwX + 23.5, curY + 2.7);
     doc.setFont('helvetica', 'bold');
-    doc.text(aC, cwX + 39.5, curY + 2.7, { align: 'center' });
+    doc.text(aC || '-', cwX + 39.5, curY + 2.7, { align: 'center' });
   }
 
   // Draw legend box on the right side of Cuaca
   doc.rect(cwX + 44, y, 14, rowH * 12);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(5.5);
-  doc.text('C = Cerah', cwX + 45, y + 6);
-  doc.text('M = Mendung', cwX + 45, y + 15);
-  doc.text('G = Gerimis', cwX + 45, y + 24);
+  doc.setFontSize(5);
+  doc.text('(-) = Kosong', cwX + 45, y + 5);
+  doc.text('C = Cerah', cwX + 45, y + 12);
+  doc.text('M = Mendung', cwX + 45, y + 19);
+  doc.text('G = Gerimis', cwX + 45, y + 26);
   doc.text('H = Hujan', cwX + 45, y + 33);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(5);
-  doc.text(`DT: ${report.weather?.downtimeHours || 0} Jam`, cwX + 45, y + 42);
+  doc.setFontSize(4.5);
+  doc.text(`DT: ${report.weather?.downtimeHours || 0} Jam`, cwX + 45, y + 41);
 
   y += rowH * 12;
 
@@ -454,7 +451,8 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(5.5);
       doc.setTextColor(0, 0, 0);
-      doc.text(lItem.kode, leftX + 5.5, curY + 2.7, { align: 'center' });
+      const lKode = lItem.kode && lItem.kode !== '0' ? lItem.kode : '';
+      doc.text(lKode, leftX + 5.5, curY + 2.7, { align: 'center' });
       doc.text(lItem.deskripsi.substring(0, 42), leftX + 12.5, curY + 2.7);
       doc.text(lItem.satuan, leftX + 76, curY + 2.7, { align: 'center' });
       doc.text(String(lItem.install), leftX + 88.5, curY + 2.7, { align: 'center' });
@@ -479,7 +477,8 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(5.5);
       doc.setTextColor(0, 0, 0);
-      doc.text(rItem.kode, leftX + halfTableW + 5.5, curY + 2.7, { align: 'center' });
+      const rKode = rItem.kode && rItem.kode !== '0' ? rItem.kode : '';
+      doc.text(rKode, leftX + halfTableW + 5.5, curY + 2.7, { align: 'center' });
       doc.text(rItem.deskripsi.substring(0, 42), leftX + halfTableW + 12.5, curY + 2.7);
       doc.text(rItem.satuan, leftX + halfTableW + 76, curY + 2.7, { align: 'center' });
       doc.text(String(rItem.install), leftX + halfTableW + 88.5, curY + 2.7, { align: 'center' });
@@ -556,7 +555,8 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(5.5);
       doc.setTextColor(0, 0, 0);
-      doc.text(lItem.kode, leftX + 5.5, curY + 2.7, { align: 'center' });
+      const lKode = lItem.kode && lItem.kode !== '0' ? lItem.kode : '';
+      doc.text(lKode, leftX + 5.5, curY + 2.7, { align: 'center' });
       doc.text(lItem.jenisMaterial.substring(0, 42), leftX + 12.5, curY + 2.7);
       doc.text(lItem.satuan, leftX + 76, curY + 2.7, { align: 'center' });
       doc.text(String(lItem.install), leftX + 88.5, curY + 2.7, { align: 'center' });
@@ -581,7 +581,8 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(5.5);
       doc.setTextColor(0, 0, 0);
-      doc.text(rItem.kode, leftX + halfTableW + 5.5, curY + 2.7, { align: 'center' });
+      const rKode = rItem.kode && rItem.kode !== '0' ? rItem.kode : '';
+      doc.text(rKode, leftX + halfTableW + 5.5, curY + 2.7, { align: 'center' });
       doc.text(rItem.jenisMaterial.substring(0, 42), leftX + halfTableW + 12.5, curY + 2.7);
       doc.text(rItem.satuan, leftX + halfTableW + 76, curY + 2.7, { align: 'center' });
       doc.text(String(rItem.install), leftX + halfTableW + 88.5, curY + 2.7, { align: 'center' });
@@ -598,230 +599,91 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
 
   y += numBomRows * bomRowH;
 
-  // 7. LAMPIRAN DOKUMENTASI FOTO LAPANGAN (Positioned BEFORE Mengetahui / Menyetujui)
-  doc.setFillColor(240, 240, 240);
-  doc.setDrawColor(0, 0, 0);
-  doc.rect(leftX, y, tableWidth, 4.5, 'FD');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(0, 0, 0);
-  doc.text('Lampiran Dokumentasi Foto Lapangan', leftX + tableWidth / 2, y + 3.2, { align: 'center' });
+  // Helper function to render 3-column signature block without Mengetahui / Menyetujui
+  const renderPdfSignatureBlock = (curY: number): number => {
+    const colSignW = tableWidth / 3;
+    const signBoxH = 24;
 
-  y += 4.5;
-
-  const page1Photos = loadedPhotos.slice(0, 3);
-  if (page1Photos.length > 0) {
-    const photoBoxH = 36;
-    const numP = page1Photos.length;
-    const gap = 3;
-    const cardW = (tableWidth - (numP - 1) * gap) / numP;
-
-    for (let pIdx = 0; pIdx < numP; pIdx++) {
-      const p = page1Photos[pIdx];
-      const cardX = leftX + pIdx * (cardW + gap);
-
-      // Card border & background
-      doc.setDrawColor(200, 200, 200);
-      doc.setFillColor(252, 252, 252);
-      doc.rect(cardX, y, cardW, photoBoxH, 'FD');
-
-      // Photo image container inside card
-      const imgPad = 1.5;
-      const imgMaxW = cardW - imgPad * 2;
-      const imgMaxH = photoBoxH - 7; // leaves 7mm for caption
-
-      let drawW = imgMaxW;
-      let drawH = imgMaxH;
-      if (p.width && p.height && p.width > 0 && p.height > 0) {
-        const aspect = p.width / p.height;
-        const boxAspect = imgMaxW / imgMaxH;
-        if (aspect > boxAspect) {
-          drawW = imgMaxW;
-          drawH = imgMaxW / aspect;
-        } else {
-          drawH = imgMaxH;
-          drawW = imgMaxH * aspect;
-        }
-      }
-
-      const drawX = cardX + imgPad + (imgMaxW - drawW) / 2;
-      const drawY = y + imgPad + (imgMaxH - drawH) / 2;
-
-      // Draw the actual photo directly into the PDF
-      try {
-        doc.addImage(p.dataUrl, p.format, drawX, drawY, drawW, drawH, undefined, 'FAST');
-      } catch (err) {
-        console.warn('Failed to embed image in PDF:', err);
-      }
-
-      // Clean caption underneath photo (no watermark, GPS, or timestamp overlays)
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(5);
-      doc.setTextColor(30, 41, 59);
-      const capText = p.caption || `Foto #${pIdx + 1}`;
-      const splitCap = doc.splitTextToSize(capText, cardW - 3);
-      doc.text(splitCap[0] || '', cardX + cardW / 2, y + photoBoxH - 2, { align: 'center' });
-    }
-
-    y += photoBoxH;
-  } else {
+    // Box 1: Kontraktor
     doc.setDrawColor(0, 0, 0);
-    doc.rect(leftX, y, tableWidth, 9);
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(5.5);
-    doc.setTextColor(150, 150, 150);
-    doc.text('Tidak ada lampiran foto dokumentasi untuk laporan ini.', leftX + tableWidth / 2, y + 5.5, { align: 'center' });
+    doc.rect(leftX, curY, colSignW, signBoxH);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
     doc.setTextColor(0, 0, 0);
-    y += 9;
+    doc.text(report.contractorSignatory?.actionLabel || 'Diajukan Oleh', leftX + 3, curY + 4.5);
+    doc.text(report.contractorSignatory?.companyName || project.contractorName || 'PT. Bestindo Putra Mandiri', leftX + 3, curY + 8);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text(report.contractorSignatory?.signedBy || '', leftX + 3, curY + 18);
+    doc.setFont('helvetica', 'normal');
+    doc.text(report.contractorSignatory?.title || '', leftX + 3, curY + 21.5);
+
+    // Box 2: Opsco PM
+    doc.rect(leftX + colSignW, curY, colSignW, signBoxH);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text(report.consultantSignatory?.actionLabel || 'Disetujui Oleh', leftX + colSignW + 3, curY + 4.5);
+    doc.text(report.consultantSignatory?.companyName || 'PT. Tirta Kencana Cahaya Mandiri', leftX + colSignW + 3, curY + 8);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text(report.consultantSignatory?.signedBy || '', leftX + colSignW + 3, curY + 18);
+    doc.setFont('helvetica', 'normal');
+    doc.text(report.consultantSignatory?.title || '', leftX + colSignW + 3, curY + 21.5);
+
+    // Box 3: Opsco Plant Manager
+    doc.rect(leftX + colSignW * 2, curY, colSignW, signBoxH);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text(report.pmoSignatory?.actionLabel || 'Disetujui Oleh', leftX + colSignW * 2 + 3, curY + 4.5);
+    doc.text(report.pmoSignatory?.companyName || 'PT. Tirta Kencana Cahaya Mandiri', leftX + colSignW * 2 + 3, curY + 8);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text(report.pmoSignatory?.signedBy || '', leftX + colSignW * 2 + 3, curY + 18);
+    doc.setFont('helvetica', 'normal');
+    doc.text(report.pmoSignatory?.title || '', leftX + colSignW * 2 + 3, curY + 21.5);
+
+    return curY + signBoxH;
+  };
+
+  // 7. LAMPIRAN DOKUMENTASI FOTO (UNIFORM IDENTICAL SIZE, NO BORDER LINES, NO SPACING, DIRECTLY MATCHING SCREENSHOT)
+  const photoY = y + 1.0;
+  const count = 5;
+  const gap = 2.5;
+  const totalGap = (count - 1) * gap;
+  const uniformW = (tableWidth - totalGap) / count;
+  const uniformH = Math.round(uniformW * 1.25 * 10) / 10; // ~44.5mm (exact 4:5 aspect ratio)
+
+  if (loadedPhotos.length > 0) {
+    const displayPhotos = loadedPhotos.slice(0, 5);
+
+    for (let idx = 0; idx < displayPhotos.length; idx++) {
+      const p = displayPhotos[idx];
+      const photoX = leftX + idx * (uniformW + gap);
+
+      try {
+        doc.addImage(p.dataUrl, p.format, photoX, photoY, uniformW, uniformH, undefined, 'FAST');
+      } catch (err) {
+        console.warn('Error adding uniform image to pdf:', err);
+      }
+    }
   }
 
-  // 8. MENGETAHUI / MENYETUJUI (3 COLUMNS)
-  doc.setFillColor(240, 240, 240);
+  // 8. TANDA TANGAN (SIGNATURE BLOCK - SIT RIGHT BELOW PHOTOS WITHOUT LARGE SPACING)
+  // Menghapus spasi bawah foto: Blok tanda tangan langsung berada 1.5mm di bawah foto
+  const signY = loadedPhotos.length > 0 ? (photoY + uniformH + 1.5) : (y + 2);
+  const finalDocBottomY = renderPdfSignatureBlock(signY);
+
+  // Outer document border from y=10 down to bottom of signature block
   doc.setDrawColor(0, 0, 0);
-  doc.rect(leftX, y, tableWidth, 4.5, 'FD');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(0, 0, 0);
-  doc.text('Mengetahui/ Menyetujui', leftX + tableWidth / 2, y + 3.2, { align: 'center' });
+  doc.setLineWidth(0.3);
+  doc.rect(leftX, 10, tableWidth, finalDocBottomY - 10);
 
-  y += 4.5;
-
-  const colSignW = tableWidth / 3; // ~63.33mm
-  const signBoxH = 26;
-
-  // Box 1: Kontraktor
-  doc.setDrawColor(0, 0, 0);
-  doc.rect(leftX, y, colSignW, signBoxH);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
-  doc.setTextColor(0, 0, 0);
-  doc.text('Project Manager', leftX + colSignW / 2, y + 4, { align: 'center' });
-  doc.text(report.contractorSignatory?.companyName || project.contractorName, leftX + colSignW / 2, y + 7.5, { align: 'center' });
-
-  // Clean signing space without "[Tanda Tangan Basah Hardcopy]"
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
-  doc.text(report.contractorSignatory?.signedBy || 'Ir. Budi Santoso', leftX + colSignW / 2, y + 21, { align: 'center' });
-  doc.setFont('helvetica', 'normal');
-  doc.text(report.contractorSignatory?.title || 'Project Manager', leftX + colSignW / 2, y + 24.5, { align: 'center' });
-
-  // Box 2: Konsultan Supervisi
-  doc.rect(leftX + colSignW, y, colSignW, signBoxH);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
-  doc.text('Project Manager Konsultan,', leftX + colSignW + colSignW / 2, y + 4, { align: 'center' });
-  doc.text(report.consultantSignatory?.companyName || 'PT KeylaAubreyRapli', leftX + colSignW + colSignW / 2, y + 7.5, { align: 'center' });
-
-  // Clean signing space without "[Tanda Tangan Basah Hardcopy]"
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
-  doc.text(report.consultantSignatory?.signedBy || 'Hendra Wijaya, ST', leftX + colSignW + colSignW / 2, y + 21, { align: 'center' });
-  doc.setFont('helvetica', 'normal');
-  doc.text(report.consultantSignatory?.title || 'Team Leader', leftX + colSignW + colSignW / 2, y + 24.5, { align: 'center' });
-
-  // Box 3: PMO / Owner
-  doc.rect(leftX + colSignW * 2, y, colSignW, signBoxH);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
-  doc.text('Project Manager,', leftX + colSignW * 2 + colSignW / 2, y + 4, { align: 'center' });
-  doc.text(report.pmoSignatory?.companyName || 'PT AubreyKeylaRapli', leftX + colSignW * 2 + colSignW / 2, y + 7.5, { align: 'center' });
-
-  // Clean signing space for wet signature (TTD) without "[DISETUJUI PMO]" text
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
-  doc.text(report.pmoSignatory?.signedBy || project.pmoLead.split('(')[0].trim(), leftX + colSignW * 2 + colSignW / 2, y + 21, { align: 'center' });
-  doc.setFont('helvetica', 'normal');
-  doc.text(report.pmoSignatory?.title || 'Project Manager', leftX + colSignW * 2 + colSignW / 2, y + 24.5, { align: 'center' });
-
-  // Footer text Page 1
-  const hasExtraPhotos = loadedPhotos.length > 3;
+  // Footer Page 1 of 1
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
-  doc.text(hasExtraPhotos ? 'Page 1 of 2' : 'Page 1', leftX + 2, 283);
-  doc.text(report.docFooterCode || 'Daily Report-P2-ND000-JDU-09', rightX - 2, 283, { align: 'right' });
-
-  // Page 2: Appendix for continuation photos if more than 3 photos are attached
-  if (hasExtraPhotos) {
-    const extraPhotos = loadedPhotos.slice(3);
-    doc.addPage();
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.3);
-    doc.rect(leftX, 10, tableWidth, 275);
-
-    let p2Y = 10;
-    // Header Page 2
-    doc.rect(leftX, p2Y, tableWidth, 12);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
-    doc.text('LAMPIRAN DOKUMENTASI FOTO LAPANGAN (LANJUTAN)', leftX + tableWidth / 2, p2Y + 5.2, { align: 'center' });
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${project.name} · Tanggal: ${formatIndoDate(report.reportDate)}`, leftX + tableWidth / 2, p2Y + 9.5, { align: 'center' });
-    p2Y += 15;
-
-    // Grid of extra photos (2 columns per row)
-    const gridCols = 2;
-    const gridCardW = (tableWidth - 6) / 2; // ~92mm
-    const gridCardH = 60;
-
-    for (let eIdx = 0; eIdx < extraPhotos.length; eIdx++) {
-      if (eIdx > 0 && eIdx % 6 === 0) {
-        doc.addPage();
-        doc.setDrawColor(0, 0, 0);
-        doc.setLineWidth(0.3);
-        doc.rect(leftX, 10, tableWidth, 275);
-        p2Y = 15;
-      }
-      const col = eIdx % gridCols;
-      const row = Math.floor((eIdx % 6) / gridCols);
-      const eCardX = leftX + col * (gridCardW + 6);
-      const eCardY = p2Y + row * (gridCardH + 4);
-
-      const ep = extraPhotos[eIdx];
-      doc.setDrawColor(200, 200, 200);
-      doc.setFillColor(252, 252, 252);
-      doc.rect(eCardX, eCardY, gridCardW, gridCardH, 'FD');
-
-      const eImgPad = 2;
-      const eImgMaxW = gridCardW - eImgPad * 2;
-      const eImgMaxH = gridCardH - 9;
-
-      let eDrawW = eImgMaxW;
-      let eDrawH = eImgMaxH;
-      if (ep.width && ep.height) {
-        const aspect = ep.width / ep.height;
-        if (aspect > eImgMaxW / eImgMaxH) {
-          eDrawW = eImgMaxW;
-          eDrawH = eImgMaxW / aspect;
-        } else {
-          eDrawH = eImgMaxH;
-          eDrawW = eImgMaxH * aspect;
-        }
-      }
-
-      const eDrawX = eCardX + eImgPad + (eImgMaxW - eDrawW) / 2;
-      const eDrawY = eCardY + eImgPad + (eImgMaxH - eDrawH) / 2;
-
-      try {
-        doc.addImage(ep.dataUrl, ep.format, eDrawX, eDrawY, eDrawW, eDrawH, undefined, 'FAST');
-      } catch (err) {
-        console.warn('Error rendering extra photo in PDF:', err);
-      }
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(6.5);
-      doc.setTextColor(30, 41, 59);
-      const splitExtraCap = doc.splitTextToSize(`Foto #${eIdx + 4}: ${ep.caption}`, gridCardW - 4);
-      doc.text(splitExtraCap[0] || '', eCardX + gridCardW / 2, eCardY + gridCardH - 3, { align: 'center' });
-    }
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6);
-    doc.text('Page 2 of 2', leftX + 2, 283);
-    doc.text(report.docFooterCode || 'Daily Report-P2-ND000-JDU-09', rightX - 2, 283, { align: 'right' });
-  }
+  doc.setTextColor(0, 0, 0);
+  doc.text('Page 1 of 1', leftX + 2, finalDocBottomY + 3.8);
+  doc.text(report.docFooterCode || 'Daily Report-P2-ND000-JDU-09', rightX - 2, finalDocBottomY + 3.8, { align: 'right' });
 
   // Trigger download
   const safeFilename = `${project.code}_${report.reportDate}_LaporanHarian.pdf`.replace(/[\/\\]/g, '-');

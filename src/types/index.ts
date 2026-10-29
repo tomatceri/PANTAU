@@ -63,13 +63,16 @@ export interface RevisionNote {
   timestamp: string;
 }
 
-export type HourlyWeatherCode = 'C' | 'M' | 'G' | 'H';
+export type HourlyWeatherCode = 'C' | 'M' | 'G' | 'H' | '' | '-';
 
 export interface AttendeeItem {
   id: string;
   nama: string;
   jabatan: string;
   instansi: string;
+  name?: string;
+  position?: string;
+  company?: string;
 }
 
 export interface BoqItem {
@@ -89,6 +92,7 @@ export interface BomItem {
 }
 
 export interface SignatoryInfo {
+  actionLabel?: string; // 'Diajukan Oleh' | 'Disetujui Oleh' | custom
   signedBy: string;
   title: string;
   companyName?: string;

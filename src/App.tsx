@@ -28,7 +28,7 @@ import {
   subscribeToSupabaseReports,
   registerProjectMeta
 } from './services/supabaseReportService';
-import { CheckCircle2, AlertTriangle, AlertCircle, CalendarDays, Database } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, AlertCircle, CalendarDays, Database, Trash2 } from 'lucide-react';
 
 const AUTH_SESSION_KEY = 'pantau_auth_session';
 
@@ -267,6 +267,22 @@ export default function App() {
     }
   };
 
+  // Handler: Delete project (strictly PMO only)
+  const handleDeleteProject = (projectId: string) => {
+    setProjects((prev) => {
+      const next = prev.filter((p) => p.id !== projectId);
+      saveStoredCustomProjects(next);
+      return next;
+    });
+    setDailyReports((prev) => prev.filter((r) => r.projectId !== projectId));
+    if (selectedProject?.id === projectId) {
+      setSelectedProject(null);
+      setSelectedReportDate(null);
+    }
+    setSupabaseNotification('✓ Proyek berhasil dihapus.');
+    setTimeout(() => setSupabaseNotification(''), 3000);
+  };
+
   // Current active report for Daily Report Form
   const activeDailyReport = selectedProject && selectedReportDate
     ? currentProjectDailies.find((r) => r.reportDate === selectedReportDate) || {
@@ -281,12 +297,15 @@ export default function App() {
         submissionTiming: selectedReportDate < todayStr ? 'late' : 'upcoming',
         approvalStatus: 'draft',
         weather: { condition: 'Sunny', downtimeHours: 0, claimEligible: false, delayReason: '' },
-        hourlyWeather: createDefault24hWeather('clear'),
-        boqItems: DEFAULT_BOQ_ITEMS,
-        bomItems: DEFAULT_BOM_ITEMS,
-        manpower: DEFAULT_MANPOWER,
-        equipment: DEFAULT_EQUIPMENT,
-        attendees: DEFAULT_ATTENDEES,
+        hourlyWeather: createDefault24hWeather('empty'),
+        boqItems: [],
+        bomItems: [],
+        manpower: [],
+        equipment: [],
+        attendees: [
+          { id: 'att-1', nama: '', jabatan: 'Supervisor', instansi: '' },
+          { id: 'att-2', nama: '', jabatan: 'HSE', instansi: '' },
+        ],
         materials: [],
         activities: [],
         photos: [],
@@ -390,6 +409,7 @@ export default function App() {
             }}
             onAddProject={handleAddProject}
             onToggleProjectStatus={handleToggleProjectStatus}
+            onDeleteProject={handleDeleteProject}
             onSyncFromCloud={() => syncFromSupabase(false)}
             isSyncingCloud={isSyncingCloud}
           />
@@ -401,9 +421,6 @@ export default function App() {
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
-                      {selectedProject.code}
-                    </span>
                     <h1 className="text-xl font-bold text-slate-900">
                       {selectedProject.name}
                     </h1>
@@ -448,6 +465,26 @@ export default function App() {
                       {selectedProject.status === 'Completed' ? 'Aktifkan Lagi' : 'Tandai Selesai'}
                     </span>
                   </button>
+
+                  {/* Fitur Hapus Proyek (PMO Only) */}
+                  {currentRole === 'pmo' && (
+                    <button
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Apakah Anda yakin ingin menghapus proyek "${selectedProject.name}"? Semua laporan harian proyek ini juga akan dihapus.`
+                          )
+                        ) {
+                          handleDeleteProject(selectedProject.id);
+                        }
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 rounded-lg transition-colors shadow-xs"
+                      title="Hapus proyek ini"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Hapus Proyek</span>
+                    </button>
+                  )}
                 </div>
               </div>
 

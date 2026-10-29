@@ -43,25 +43,18 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
   const [formData, setFormData] = useState<DailyReport>(() => {
     const initialized: DailyReport = {
       ...report,
-      nomorBpmpo: report.nomorBpmpo || `BPMPO/2026/X/${report.reportDate.replace(/-/g, '').slice(-3)}`,
       docCode: report.docCode || 'AAA/CONS/FM-014 Rev01',
       docEffectiveDate: report.docEffectiveDate || '14 Juli 2025',
       docFooterCode: report.docFooterCode || 'Daily Report-P2-ND000-JDU-09',
-      hourlyWeather: report.hourlyWeather || createDefault24hWeather('clear'),
-      boqItems: report.boqItems && report.boqItems.length > 0 ? report.boqItems : DEFAULT_BOQ_ITEMS,
-      bomItems: report.bomItems && report.bomItems.length > 0 ? report.bomItems : DEFAULT_BOM_ITEMS,
-      manpower: report.manpower && report.manpower.length > 0 ? report.manpower : DEFAULT_MANPOWER,
-      equipment: report.equipment && report.equipment.length > 0 ? report.equipment : DEFAULT_EQUIPMENT,
+      hourlyWeather: report.hourlyWeather || createDefault24hWeather('empty'),
+      boqItems: report.boqItems || [],
+      bomItems: report.bomItems || [],
+      manpower: report.manpower || [],
+      equipment: report.equipment || [],
       attendees: report.attendees && report.attendees.length > 0 ? report.attendees : DEFAULT_ATTENDEES,
-      contractorSignatory: report.contractorSignatory || {
-        ...DEFAULT_SIGNATORIES.contractor,
-        companyName: project.contractorName,
-      },
+      contractorSignatory: report.contractorSignatory || DEFAULT_SIGNATORIES.contractor,
       consultantSignatory: report.consultantSignatory || DEFAULT_SIGNATORIES.consultant,
-      pmoSignatory: report.pmoSignatory || {
-        ...DEFAULT_SIGNATORIES.pmo,
-        signedBy: project.pmoLead.split('(')[0].trim(),
-      },
+      pmoSignatory: report.pmoSignatory || DEFAULT_SIGNATORIES.pmo,
     };
     return initialized;
   });
@@ -191,7 +184,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       const copy = [...(prev.boqItems || [])];
       if (!copy[rowIdx]) return prev;
       const updated = { ...copy[rowIdx] };
-      if (colIdx === 0) updated.kode = value;
+      if (colIdx === 0) updated.kode = value === '' ? '0' : value;
       else if (colIdx === 1) updated.deskripsi = value;
       else if (colIdx === 2) updated.satuan = value;
       else if (colIdx === 3) updated.install = value;
@@ -205,7 +198,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       const copy = [...(prev.bomItems || [])];
       if (!copy[rowIdx]) return prev;
       const updated = { ...copy[rowIdx] };
-      if (colIdx === 0) updated.kode = value;
+      if (colIdx === 0) updated.kode = value === '' ? '0' : value;
       else if (colIdx === 1) updated.jenisMaterial = value;
       else if (colIdx === 2) updated.satuan = value;
       else if (colIdx === 3) updated.install = value;
@@ -220,8 +213,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       if (!copy[rowIdx]) return prev;
       const updated = { ...copy[rowIdx] };
       if (colIdx === 0) updated.trade = value;
-      else if (colIdx === 1) updated.count = value === '' ? ('' as any) : (parseInt(value, 10) || 0);
-      else if (colIdx === 2) updated.hoursWorked = value === '' ? ('' as any) : (parseInt(value, 10) || 0);
+      else if (colIdx === 1) updated.count = value === '' ? 0 : (isNaN(parseInt(value, 10)) ? 0 : parseInt(value, 10));
       copy[rowIdx] = updated;
       return { ...prev, manpower: copy };
     });
@@ -233,9 +225,8 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       if (!copy[rowIdx]) return prev;
       const updated = { ...copy[rowIdx] };
       if (colIdx === 0) updated.equipmentName = value;
-      else if (colIdx === 1) updated.count = value === '' ? ('' as any) : (parseInt(value, 10) || 0);
-      else if (colIdx === 2) updated.operationalHours = value === '' ? ('' as any) : (parseInt(value, 10) || 0);
-      else if (colIdx === 3) updated.status = value;
+      else if (colIdx === 1) updated.count = value === '' ? 0 : (isNaN(parseInt(value, 10)) ? 0 : parseInt(value, 10));
+      else if (colIdx === 2) updated.status = value;
       copy[rowIdx] = updated;
       return { ...prev, equipment: copy };
     });
@@ -411,7 +402,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
     const rows: string[] = [];
     for (let r = minR; r <= maxR && r < items.length; r++) {
       const item = items[r];
-      const rowValues = [item.trade, String(item.count), String(item.hoursWorked || 8)];
+      const rowValues = [item.trade, String(item.count || 0)];
       const selectedCols = rowValues.slice(minC, maxC + 1);
       rows.push(selectedCols.join('\t'));
     }
@@ -432,7 +423,6 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
         for (let c = minC; c <= maxC; c++) {
           if (c === 0) item.trade = '';
           if (c === 1) item.count = 0;
-          if (c === 2) item.hoursWorked = 0;
         }
         current[r] = item;
       }
@@ -452,7 +442,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
     const rows: string[] = [];
     for (let r = minR; r <= maxR && r < items.length; r++) {
       const item = items[r];
-      const rowValues = [item.equipmentName, String(item.count), String(item.operationalHours || 8), item.status];
+      const rowValues = [item.equipmentName, String(item.count || 0), item.status || ''];
       const selectedCols = rowValues.slice(minC, maxC + 1);
       rows.push(selectedCols.join('\t'));
     }
@@ -473,8 +463,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
         for (let c = minC; c <= maxC; c++) {
           if (c === 0) item.equipmentName = '';
           if (c === 1) item.count = 0;
-          if (c === 2) item.operationalHours = 0;
-          if (c === 3) item.status = '';
+          if (c === 2) item.status = '';
         }
         current[r] = item;
       }
@@ -672,8 +661,8 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       setTimeout(() => setCopyFeedback(''), 3000);
       return;
     }
-    const tsv = ['No\tTenaga Kerja / Posisi\tJumlah Orang\tJam Kerja']
-      .concat(items.map((m, idx) => `${idx + 1}\t${m.trade}\t${m.count}\t${m.hoursWorked || 8}`))
+    const tsv = ['No\tTenaga Kerja / Posisi\tJumlah Orang']
+      .concat(items.map((m, idx) => `${idx + 1}\t${m.trade}\t${m.count || 0}`))
       .join('\n');
     navigator.clipboard.writeText(tsv);
     setCopyFeedback(`✓ Tersalin! ${items.length} baris Tenaga Kerja siap dipaste ke Microsoft Excel / Google Sheets.`);
@@ -688,11 +677,8 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       setTimeout(() => setCopyFeedback(''), 3000);
       return;
     }
-    const tsv = ['No\tNama Peralatan\tJumlah Unit\tJumlah Stok\tKondisi / Status']
-      .concat(items.map((eq, idx) => {
-        const stLabel = !eq.status ? '-' : eq.status === 'Operating' ? 'Baik / Operasi' : eq.status === 'Standby' ? 'Standby di site' : eq.status === 'Breakdown' ? 'Breakdown / Servis' : eq.status;
-        return `${idx + 1}\t${eq.equipmentName}\t${eq.count}\t${eq.status === 'Standby' ? eq.count : 0}\t${stLabel}`;
-      }))
+    const tsv = ['No\tNama Peralatan\tJumlah (Unit)\tKeterangan']
+      .concat(items.map((eq, idx) => `${idx + 1}\t${eq.equipmentName}\t${eq.count || 0}\t${eq.status || ''}`))
       .join('\n');
     navigator.clipboard.writeText(tsv);
     setCopyFeedback(`✓ Tersalin! ${items.length} baris Peralatan siap dipaste ke Microsoft Excel / Google Sheets.`);
@@ -904,7 +890,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       const idx = (formData.boqItems?.length || 0) + i + 1;
       return {
         id: `boq-${Date.now()}-${i}`,
-        kode: `1.${idx}`,
+        kode: '0',
         deskripsi: '',
         satuan: 'm',
         install: 0,
@@ -918,16 +904,13 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
 
   // Helper to add empty rows to BOM
   const handleAddBomRows = (count: number = 1) => {
-    const newItems: BomItem[] = Array.from({ length: count }).map((_, i) => {
-      const idx = (formData.bomItems?.length || 0) + i + 1;
-      return {
-        id: `bom-${Date.now()}-${i}`,
-        kode: `M-${idx.toString().padStart(2, '0')}`,
-        jenisMaterial: '',
-        satuan: 'unit',
-        install: 0,
-      };
-    });
+    const newItems: BomItem[] = Array.from({ length: count }).map((_, i) => ({
+      id: `bom-${Date.now()}-${i}`,
+      kode: '0',
+      jenisMaterial: '',
+      satuan: 'unit',
+      install: 0,
+    }));
     setFormData((prev) => ({
       ...prev,
       bomItems: [...(prev.bomItems || []), ...newItems],
@@ -939,8 +922,8 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
     const newItems: ManpowerEntry[] = Array.from({ length: count }).map((_, i) => ({
       id: `mp-${Date.now()}-${i}`,
       trade: '',
-      count: 1,
-      hoursWorked: 8,
+      count: 0,
+      hoursWorked: 0,
     }));
     setFormData((prev) => ({
       ...prev,
@@ -953,9 +936,9 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
     const newItems: EquipmentEntry[] = Array.from({ length: count }).map((_, i) => ({
       id: `eq-${Date.now()}-${i}`,
       equipmentName: '',
-      count: 1,
-      operationalHours: 8,
-      status: 'Operating',
+      count: 0,
+      operationalHours: 0,
+      status: '',
     }));
     setFormData((prev) => ({
       ...prev,
@@ -1007,11 +990,12 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
     }
   };
 
-  // Weather hour toggle (C -> M -> G -> H -> C)
+  // Weather hour toggle ('' -> C -> M -> G -> H -> '')
   const handleHourlyWeatherToggle = (hour: string) => {
-    const currentCode = formData.hourlyWeather?.[hour] || 'C';
-    const sequence: HourlyWeatherCode[] = ['C', 'M', 'G', 'H'];
-    const nextIdx = (sequence.indexOf(currentCode) + 1) % sequence.length;
+    const currentCode = (formData.hourlyWeather?.[hour] || '') as HourlyWeatherCode;
+    const sequence: HourlyWeatherCode[] = ['', 'C', 'M', 'G', 'H'];
+    const currentIdx = sequence.indexOf(currentCode);
+    const nextIdx = ((currentIdx === -1 ? 0 : currentIdx) + 1) % sequence.length;
     const nextCode = sequence[nextIdx];
 
     const updatedWeather = {
@@ -1032,7 +1016,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
     }));
   };
 
-  const handleApplyWeatherPreset = (preset: 'clear' | 'afternoon_rain' | 'cloudy') => {
+  const handleApplyWeatherPreset = (preset: 'clear' | 'afternoon_rain' | 'cloudy' | 'empty') => {
     const newWeather = createDefault24hWeather(preset);
     const calc = calculateWeatherDowntime(newWeather);
     setFormData((prev) => ({
@@ -1047,27 +1031,30 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
     }));
   };
 
-  // Photo Upload (Lampirkan foto bersih tanpa watermark / geotag overlay)
+  // Photo Upload (Mendukung upload banyak foto sekaligus, caption awal kosong)
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     setIsUploadingPhoto(true);
     try {
-      const file = files[0];
-      const cleanDataUrl = await readCleanPhoto(file);
+      const fileList = Array.from(files);
+      const newPhotos: SitePhoto[] = [];
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        const cleanDataUrl = await readCleanPhoto(file);
+        newPhotos.push({
+          id: `photo-${Date.now()}-${i}`,
+          url: cleanDataUrl,
+          caption: '',
+          timestamp: new Date().toLocaleString('id-ID'),
+          coordinates: project.coordinates,
+          projectName: project.name,
+          watermarked: false,
+        });
+      }
 
-      const newPhoto: SitePhoto = {
-        id: `photo-${Date.now()}`,
-        url: cleanDataUrl,
-        caption: `Dokumentasi visual pekerjaan tanggal ${formData.reportDate}`,
-        timestamp: new Date().toLocaleString('id-ID'),
-        coordinates: project.coordinates,
-        projectName: project.name,
-        watermarked: false,
-      };
-
-      setFormData((prev) => ({ ...prev, photos: [...prev.photos, newPhoto] }));
+      setFormData((prev) => ({ ...prev, photos: [...(prev.photos || []), ...newPhotos] }));
     } catch (err) {
       console.error('Photo upload failed:', err);
     } finally {
@@ -1722,7 +1709,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                 {mpSelection && (() => {
                   const { minR, maxR, minC, maxC } = getRangeBounds(mpSelection);
                   const totalCells = (maxR - minR + 1) * (maxC - minC + 1);
-                  const colLabels = ['A · Tenaga Kerja / Posisi', 'B · Jumlah Orang', 'C · Jam Kerja'];
+                  const colLabels = ['A · Tenaga Kerja / Posisi', 'B · Jumlah Orang'];
                   return (
                     <div className="bg-blue-700 text-white px-3 py-2 flex flex-wrap items-center justify-between gap-2 border-b border-blue-800 text-xs">
                       <div className="flex items-center gap-2">
@@ -1773,7 +1760,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                         <th
                           onClick={() => {
                             const len = (formData.manpower || []).length;
-                            if (len > 0) setMpSelection({ startRow: 0, startCol: 0, endRow: len - 1, endCol: 2 });
+                            if (len > 0) setMpSelection({ startRow: 0, startCol: 0, endRow: len - 1, endCol: 1 });
                           }}
                           className="py-1 px-2 w-10 text-center border-r border-slate-300 bg-slate-300 hover:bg-blue-200 cursor-pointer select-none transition-colors"
                           title="Klik untuk block seluruh tabel Tenaga Kerja"
@@ -1821,7 +1808,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                               setMpSelection((prev) => (prev ? { ...prev, endCol: 1 } : null));
                             }
                           }}
-                          className={`py-1.5 px-3 w-28 text-center border-r border-slate-300 cursor-pointer select-none hover:bg-blue-100 transition-colors bg-emerald-100/60 text-emerald-950 font-black ${
+                          className={`py-1.5 px-3 w-32 text-center border-r border-slate-300 cursor-pointer select-none hover:bg-blue-100 transition-colors bg-emerald-100/60 text-emerald-950 font-black ${
                             mpSelection && getRangeBounds(mpSelection).minC <= 1 && getRangeBounds(mpSelection).maxC >= 1
                               ? '!bg-blue-200 !text-blue-950'
                               : ''
@@ -1829,31 +1816,6 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                           title="Klik atau seret untuk block kolom Jumlah Orang"
                         >
                           B · Orang (Jumlah)
-                        </th>
-
-                        {/* Column C: Jam Kerja */}
-                        <th
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            const len = (formData.manpower || []).length;
-                            if (len > 0) {
-                              setMpIsDragging(true);
-                              setMpSelection({ startRow: 0, startCol: 2, endRow: len - 1, endCol: 2 });
-                            }
-                          }}
-                          onMouseEnter={() => {
-                            if (mpIsDragging && mpSelection) {
-                              setMpSelection((prev) => (prev ? { ...prev, endCol: 2 } : null));
-                            }
-                          }}
-                          className={`py-1.5 px-3 w-28 text-center border-r border-slate-300 cursor-pointer select-none hover:bg-blue-100 transition-colors ${
-                            mpSelection && getRangeBounds(mpSelection).minC <= 2 && getRangeBounds(mpSelection).maxC >= 2
-                              ? 'bg-blue-200 text-blue-950 font-black'
-                              : ''
-                          }`}
-                          title="Klik atau seret untuk block kolom Jam Kerja"
-                        >
-                          C · Jam Kerja (Jam)
                         </th>
                         <th className="py-1 px-2 w-10 text-center"></th>
                       </tr>
@@ -1866,11 +1828,11 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                             onMouseDown={(e) => {
                               e.preventDefault();
                               setMpIsDragging(true);
-                              setMpSelection({ startRow: idx, startCol: 0, endRow: idx, endCol: 2 });
+                              setMpSelection({ startRow: idx, startCol: 0, endRow: idx, endCol: 1 });
                             }}
                             onMouseEnter={() => {
                               if (mpIsDragging && mpSelection) {
-                                setMpSelection((prev) => (prev ? { ...prev, endRow: idx, endCol: 2 } : null));
+                                setMpSelection((prev) => (prev ? { ...prev, endRow: idx, endCol: 1 } : null));
                               }
                             }}
                             className={`py-0 px-2 text-center font-mono text-[11px] font-semibold border-r border-slate-300 select-none cursor-pointer transition-colors ${
@@ -1923,7 +1885,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                                   e.target.select();
                                 }
                               }}
-                              onKeyDown={(e) => handleGridKeyDown(e, 'mp', idx, 0, 3)}
+                              onKeyDown={(e) => handleGridKeyDown(e, 'mp', idx, 0, 2)}
                               onChange={(e) => updateMpCell(idx, 0, e.target.value)}
                               className={`w-full h-8 px-2 text-xs border-none focus:outline-none bg-transparent focus:bg-white focus:ring-2 focus:ring-emerald-600 focus:z-10 text-slate-800 ${
                                 mpIsDragging ? 'pointer-events-none select-none' : ''
@@ -1954,8 +1916,8 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                               type="text"
                               inputMode="numeric"
                               id={`mp-cell-${idx}-1`}
-                              value={m.count ?? ''}
-                              placeholder="1"
+                              value={m.count !== undefined && m.count !== null ? m.count : ''}
+                              placeholder="0"
                               onDragStart={(e) => e.preventDefault()}
                               onPaste={(e) => handleMpCellPaste(e, idx)}
                               onMouseDown={(e) => {
@@ -1970,56 +1932,9 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                                   e.target.select();
                                 }
                               }}
-                              onKeyDown={(e) => handleGridKeyDown(e, 'mp', idx, 1, 3)}
+                              onKeyDown={(e) => handleGridKeyDown(e, 'mp', idx, 1, 2)}
                               onChange={(e) => updateMpCell(idx, 1, e.target.value)}
                               className={`w-full h-8 px-2 text-xs text-center font-mono font-bold text-slate-900 border-none focus:outline-none bg-transparent focus:bg-white focus:ring-2 focus:ring-emerald-600 focus:z-10 ${
-                                mpIsDragging ? 'pointer-events-none select-none' : ''
-                              }`}
-                            />
-                          </td>
-
-                          {/* Column C: Jam Kerja */}
-                          <td
-                            className={`p-0 border-r border-slate-300 transition-colors relative cursor-cell select-none ${
-                              isMpCellSelected(idx, 2)
-                                ? 'bg-blue-100 ring-2 ring-blue-500 ring-inset z-10 font-bold'
-                                : ''
-                            }`}
-                            onMouseDown={(e) => {
-                              if (e.button === 0) {
-                                setMpIsDragging(true);
-                                setMpSelection({ startRow: idx, startCol: 2, endRow: idx, endCol: 2 });
-                              }
-                            }}
-                            onMouseEnter={() => {
-                              if (mpIsDragging && mpSelection) {
-                                setMpSelection((prev) => (prev ? { ...prev, endRow: idx, endCol: 2 } : null));
-                              }
-                            }}
-                          >
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              id={`mp-cell-${idx}-2`}
-                              value={m.hoursWorked ?? 8}
-                              placeholder="8"
-                              onDragStart={(e) => e.preventDefault()}
-                              onPaste={(e) => handleMpCellPaste(e, idx)}
-                              onMouseDown={(e) => {
-                                if (e.button === 0) {
-                                  setMpIsDragging(true);
-                                  setMpSelection({ startRow: idx, startCol: 2, endRow: idx, endCol: 2 });
-                                }
-                              }}
-                              onFocus={(e) => {
-                                if (!mpIsDragging) {
-                                  setMpSelection({ startRow: idx, startCol: 2, endRow: idx, endCol: 2 });
-                                  e.target.select();
-                                }
-                              }}
-                              onKeyDown={(e) => handleGridKeyDown(e, 'mp', idx, 2, 3)}
-                              onChange={(e) => updateMpCell(idx, 2, e.target.value)}
-                              className={`w-full h-8 px-2 text-xs text-center font-mono border-none focus:outline-none bg-transparent focus:bg-white focus:ring-2 focus:ring-emerald-600 focus:z-10 text-slate-700 ${
                                 mpIsDragging ? 'pointer-events-none select-none' : ''
                               }`}
                             />
@@ -2176,7 +2091,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                 {eqSelection && (() => {
                   const { minR, maxR, minC, maxC } = getRangeBounds(eqSelection);
                   const totalCells = (maxR - minR + 1) * (maxC - minC + 1);
-                  const colLabels = ['A · Nama Peralatan', 'B · Jumlah Unit', 'C · Jumlah Stok', 'D · Kondisi / Status'];
+                  const colLabels = ['A · Nama Peralatan', 'B · Jumlah (Unit)', 'C · Keterangan'];
                   return (
                     <div className="bg-blue-700 text-white px-3 py-2 flex flex-wrap items-center justify-between gap-2 border-b border-blue-800 text-xs">
                       <div className="flex items-center gap-2">
@@ -2227,7 +2142,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                         <th
                           onClick={() => {
                             const len = (formData.equipment || []).length;
-                            if (len > 0) setEqSelection({ startRow: 0, startCol: 0, endRow: len - 1, endCol: 3 });
+                            if (len > 0) setEqSelection({ startRow: 0, startCol: 0, endRow: len - 1, endCol: 2 });
                           }}
                           className="py-1 px-2 w-10 text-center border-r border-slate-300 bg-slate-300 hover:bg-blue-200 cursor-pointer select-none transition-colors"
                           title="Klik untuk block seluruh tabel Peralatan"
@@ -2275,7 +2190,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                               setEqSelection((prev) => (prev ? { ...prev, endCol: 1 } : null));
                             }
                           }}
-                          className={`py-1.5 px-3 w-28 text-center border-r border-slate-300 cursor-pointer select-none hover:bg-blue-100 transition-colors bg-emerald-100/60 text-emerald-950 font-black ${
+                          className={`py-1.5 px-3 w-32 text-center border-r border-slate-300 cursor-pointer select-none hover:bg-blue-100 transition-colors bg-emerald-100/60 text-emerald-950 font-black ${
                             eqSelection && getRangeBounds(eqSelection).minC <= 1 && getRangeBounds(eqSelection).maxC >= 1
                               ? '!bg-blue-200 !text-blue-950'
                               : ''
@@ -2285,7 +2200,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                           B · Jumlah (Unit)
                         </th>
 
-                        {/* Column C: Jumlah Stok */}
+                        {/* Column C: Keterangan */}
                         <th
                           onMouseDown={(e) => {
                             e.preventDefault();
@@ -2300,39 +2215,14 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                               setEqSelection((prev) => (prev ? { ...prev, endCol: 2 } : null));
                             }
                           }}
-                          className={`py-1.5 px-3 w-28 text-center border-r border-slate-300 cursor-pointer select-none hover:bg-blue-100 transition-colors ${
+                          className={`py-1.5 px-3 w-48 text-center border-r border-slate-300 cursor-pointer select-none hover:bg-blue-100 transition-colors ${
                             eqSelection && getRangeBounds(eqSelection).minC <= 2 && getRangeBounds(eqSelection).maxC >= 2
                               ? 'bg-blue-200 text-blue-950 font-black'
                               : ''
                           }`}
-                          title="Klik atau seret untuk block kolom Jumlah Stok"
+                          title="Klik atau seret untuk block kolom Keterangan"
                         >
-                          C · Jumlah Stok
-                        </th>
-
-                        {/* Column D: Kondisi / Status */}
-                        <th
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            const len = (formData.equipment || []).length;
-                            if (len > 0) {
-                              setEqIsDragging(true);
-                              setEqSelection({ startRow: 0, startCol: 3, endRow: len - 1, endCol: 3 });
-                            }
-                          }}
-                          onMouseEnter={() => {
-                            if (eqIsDragging && eqSelection) {
-                              setEqSelection((prev) => (prev ? { ...prev, endCol: 3 } : null));
-                            }
-                          }}
-                          className={`py-1.5 px-3 w-36 text-center border-r border-slate-300 cursor-pointer select-none hover:bg-blue-100 transition-colors ${
-                            eqSelection && getRangeBounds(eqSelection).minC <= 3 && getRangeBounds(eqSelection).maxC >= 3
-                              ? 'bg-blue-200 text-blue-950 font-black'
-                              : ''
-                          }`}
-                          title="Klik atau seret untuk block kolom Kondisi / Status"
-                        >
-                          D · Kondisi / Status
+                          C · Keterangan
                         </th>
                         <th className="py-1 px-2 w-10 text-center"></th>
                       </tr>
@@ -2345,11 +2235,11 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                             onMouseDown={(e) => {
                               e.preventDefault();
                               setEqIsDragging(true);
-                              setEqSelection({ startRow: idx, startCol: 0, endRow: idx, endCol: 3 });
+                              setEqSelection({ startRow: idx, startCol: 0, endRow: idx, endCol: 2 });
                             }}
                             onMouseEnter={() => {
                               if (eqIsDragging && eqSelection) {
-                                setEqSelection((prev) => (prev ? { ...prev, endRow: idx, endCol: 3 } : null));
+                                setEqSelection((prev) => (prev ? { ...prev, endRow: idx, endCol: 2 } : null));
                               }
                             }}
                             className={`py-0 px-2 text-center font-mono text-[11px] font-semibold border-r border-slate-300 select-none cursor-pointer transition-colors ${
@@ -2402,7 +2292,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                                   e.target.select();
                                 }
                               }}
-                              onKeyDown={(e) => handleGridKeyDown(e, 'eq', idx, 0, 4)}
+                              onKeyDown={(e) => handleGridKeyDown(e, 'eq', idx, 0, 3)}
                               onChange={(e) => updateEqCell(idx, 0, e.target.value)}
                               className={`w-full h-8 px-2 text-xs border-none focus:outline-none bg-transparent focus:bg-white focus:ring-2 focus:ring-emerald-600 focus:z-10 text-slate-800 ${
                                 eqIsDragging ? 'pointer-events-none select-none' : ''
@@ -2433,8 +2323,8 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                               type="text"
                               inputMode="numeric"
                               id={`eq-cell-${idx}-1`}
-                              value={eq.count ?? ''}
-                              placeholder="1"
+                              value={eq.count !== undefined && eq.count !== null ? eq.count : ''}
+                              placeholder="0"
                               onDragStart={(e) => e.preventDefault()}
                               onPaste={(e) => handleEqCellPaste(e, idx)}
                               onMouseDown={(e) => {
@@ -2449,7 +2339,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                                   e.target.select();
                                 }
                               }}
-                              onKeyDown={(e) => handleGridKeyDown(e, 'eq', idx, 1, 4)}
+                              onKeyDown={(e) => handleGridKeyDown(e, 'eq', idx, 1, 3)}
                               onChange={(e) => updateEqCell(idx, 1, e.target.value)}
                               className={`w-full h-8 px-2 text-xs text-center font-mono font-bold text-slate-900 border-none focus:outline-none bg-transparent focus:bg-white focus:ring-2 focus:ring-emerald-600 focus:z-10 ${
                                 eqIsDragging ? 'pointer-events-none select-none' : ''
@@ -2457,7 +2347,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                             />
                           </td>
 
-                          {/* Column C: Jumlah Stok */}
+                          {/* Column C: Keterangan */}
                           <td
                             className={`p-0 border-r border-slate-300 transition-colors relative cursor-cell select-none ${
                               isEqCellSelected(idx, 2)
@@ -2478,10 +2368,9 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                           >
                             <input
                               type="text"
-                              inputMode="numeric"
                               id={`eq-cell-${idx}-2`}
-                              value={eq.status === 'Standby' ? eq.count : (eq.operationalHours ?? 0)}
-                              placeholder="0"
+                              value={eq.status || ''}
+                              placeholder="Keterangan kondisi / status alat..."
                               onDragStart={(e) => e.preventDefault()}
                               onPaste={(e) => handleEqCellPaste(e, idx)}
                               onMouseDown={(e) => {
@@ -2496,161 +2385,12 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                                   e.target.select();
                                 }
                               }}
-                              onKeyDown={(e) => handleGridKeyDown(e, 'eq', idx, 2, 4)}
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value, 10) || 0;
-                                updateEqCell(idx, 2, val);
-                              }}
-                              className={`w-full h-8 px-2 text-xs text-center font-mono border-none focus:outline-none bg-transparent focus:bg-white focus:ring-2 focus:ring-emerald-600 focus:z-10 text-slate-700 ${
+                              onKeyDown={(e) => handleGridKeyDown(e, 'eq', idx, 2, 3)}
+                              onChange={(e) => updateEqCell(idx, 2, e.target.value)}
+                              className={`w-full h-8 px-2 text-xs border-none focus:outline-none bg-transparent focus:bg-white focus:ring-2 focus:ring-emerald-600 focus:z-10 text-slate-800 ${
                                 eqIsDragging ? 'pointer-events-none select-none' : ''
                               }`}
                             />
-                          </td>
-
-                          {/* Column D: Status / Kondisi */}
-                          <td
-                            className={`p-0 border-r border-slate-300 transition-colors relative cursor-cell select-none ${
-                              isEqCellSelected(idx, 3)
-                                ? 'bg-blue-100 ring-2 ring-blue-500 ring-inset z-10 font-bold'
-                                : ''
-                            }`}
-                            onMouseDown={(e) => {
-                              if (e.button === 0 && !directInputRows[idx]) {
-                                setEqIsDragging(true);
-                                setEqSelection({ startRow: idx, startCol: 3, endRow: idx, endCol: 3 });
-                              }
-                            }}
-                            onMouseEnter={() => {
-                              if (eqIsDragging && eqSelection && !directInputRows[idx]) {
-                                setEqSelection((prev) => (prev ? { ...prev, endRow: idx, endCol: 3 } : null));
-                              }
-                            }}
-                          >
-                            {directInputRows[idx] ? (
-                              <div className="flex items-center w-full h-8 bg-white ring-2 ring-emerald-600">
-                                <input
-                                  type="text"
-                                  id={`eq-cell-${idx}-3`}
-                                  value={eq.status || ''}
-                                  placeholder="Ketik status peralatan..."
-                                  autoFocus
-                                  onChange={(e) => updateEqCell(idx, 3, e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault();
-                                      const trimmed = (eq.status || '').trim();
-                                      if (trimmed && !equipmentStatusOptions.includes(trimmed)) {
-                                        setEquipmentStatusOptions((prev) => [...prev, trimmed]);
-                                      }
-                                      setDirectInputRows((prev) => ({ ...prev, [idx]: false }));
-                                      handleGridKeyDown(e, 'eq', idx, 3, 4);
-                                    } else if (e.key === 'Escape') {
-                                      setDirectInputRows((prev) => ({ ...prev, [idx]: false }));
-                                    } else {
-                                      handleGridKeyDown(e, 'eq', idx, 3, 4);
-                                    }
-                                  }}
-                                  onBlur={() => {
-                                    const trimmed = (eq.status || '').trim();
-                                    if (trimmed && !equipmentStatusOptions.includes(trimmed)) {
-                                      setEquipmentStatusOptions((prev) => [...prev, trimmed]);
-                                    }
-                                  }}
-                                  className="w-full h-full px-2 text-xs border-none focus:outline-none bg-transparent text-slate-900 font-semibold"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setDirectInputRows((prev) => ({ ...prev, [idx]: false }))}
-                                  className="px-2 text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 h-full border-l border-slate-300 font-bold shrink-0"
-                                  title="Kembali ke pilihan dropdown"
-                                >
-                                  Pilihan ▾
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="relative flex items-center w-full h-8">
-                                <select
-                                  id={`eq-cell-${idx}-3`}
-                                  value={eq.status || ''}
-                                  onFocus={() => {
-                                    if (!eqIsDragging) {
-                                      setEqSelection({ startRow: idx, startCol: 3, endRow: idx, endCol: 3 });
-                                    }
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Delete' || e.key === 'Backspace') {
-                                      e.preventDefault();
-                                      updateEqCell(idx, 3, '');
-                                    } else {
-                                      handleGridKeyDown(e, 'eq', idx, 3, 4);
-                                    }
-                                  }}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    if (val === '__custom__') {
-                                      setDirectInputRows((prev) => ({ ...prev, [idx]: true }));
-                                    } else {
-                                      updateEqCell(idx, 3, val);
-                                    }
-                                  }}
-                                  className={`w-full h-8 pl-2 pr-6 text-xs border-none focus:outline-none bg-transparent focus:bg-white focus:ring-2 focus:ring-emerald-600 focus:z-10 appearance-none cursor-pointer ${
-                                    !eq.status
-                                      ? 'text-slate-400 italic'
-                                      : eq.status === 'Operating' || eq.status === 'Baik / Operasi'
-                                      ? 'text-emerald-800 font-semibold'
-                                      : eq.status === 'Standby' || eq.status === 'Standby di site'
-                                      ? 'text-amber-800 font-semibold'
-                                      : eq.status === 'Breakdown' || eq.status === 'Breakdown / Servis'
-                                      ? 'text-red-700 font-semibold'
-                                      : 'text-blue-800 font-semibold'
-                                  } ${eqIsDragging ? 'pointer-events-none select-none' : ''}`}
-                                >
-                                  {/* Opsi Kosong yang diminta user */}
-                                  <option value="" className="text-slate-400 italic">
-                                    -- Kosong / Belum Ada --
-                                  </option>
-
-                                  {/* Jika status saat ini adalah status kustom yang belum ada di daftar, tetap tampilkan */}
-                                  {eq.status &&
-                                    !equipmentStatusOptions.includes(eq.status) &&
-                                    !['Operating', 'Standby', 'Breakdown'].includes(eq.status) && (
-                                      <option value={eq.status}>{eq.status}</option>
-                                    )}
-
-                                  {/* Daftar opsi yang bisa dikustomisasi */}
-                                  {equipmentStatusOptions.map((opt) => {
-                                    const optVal =
-                                      opt === 'Baik / Operasi'
-                                        ? 'Operating'
-                                        : opt === 'Standby di site'
-                                        ? 'Standby'
-                                        : opt === 'Breakdown / Servis'
-                                        ? 'Breakdown'
-                                        : opt;
-                                    return (
-                                      <option key={opt} value={optVal}>
-                                        {opt}
-                                      </option>
-                                    );
-                                  })}
-
-                                  {/* Opsi untuk ketik teks status bebas/kustom */}
-                                  <option value="__custom__" className="text-blue-700 font-bold bg-blue-50">
-                                    ✏️ + Ketik Status Kustom...
-                                  </option>
-                                </select>
-
-                                {/* Quick toggle to custom typing */}
-                                <button
-                                  type="button"
-                                  onClick={() => setDirectInputRows((prev) => ({ ...prev, [idx]: true }))}
-                                  className="absolute right-1 text-slate-400 hover:text-slate-700 p-0.5 rounded text-[10px]"
-                                  title="Ketik status bebas secara langsung"
-                                >
-                                  ✏️
-                                </button>
-                              </div>
-                            )}
                           </td>
 
                           {/* Action Del */}
@@ -2680,9 +2420,6 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                         </td>
                         <td className="py-2 px-2 text-center font-mono font-bold text-emerald-800 bg-emerald-50">
                           {formData.equipment.reduce((acc, c) => acc + (c.count || 0), 0)} Unit
-                        </td>
-                        <td className="py-2 px-2 text-center font-mono text-slate-600 text-[11px]">
-                          Standby: {formData.equipment.filter((e) => e.status === 'Standby').reduce((acc, c) => acc + c.count, 0)} Unit
                         </td>
                         <td></td>
                       </tr>
@@ -2722,6 +2459,13 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                   <span className="text-xs text-slate-500 font-medium">Preset Cepat:</span>
                   <button
                     type="button"
+                    onClick={() => handleApplyWeatherPreset('empty')}
+                    className="px-2.5 py-1 text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 rounded-md"
+                  >
+                    Kosongkan Semua Jam (-)
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => handleApplyWeatherPreset('clear')}
                     className="px-2.5 py-1 text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-md"
                   >
@@ -2745,11 +2489,11 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
               </div>
 
               {/* Legend Strip */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
                 {WEATHER_LEGEND.map((leg) => (
                   <div key={leg.code} className={`p-2 rounded-lg border ${leg.color} flex items-center gap-2 min-w-0 overflow-hidden`}>
                     <span className="w-6 h-6 shrink-0 rounded flex items-center justify-center font-bold font-mono bg-white/70">
-                      {leg.code}
+                      {leg.code || '-'}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="font-bold leading-tight">{leg.label}</div>
@@ -2764,18 +2508,19 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                 <div className="text-xs font-bold text-slate-700">01:00 s/d 12:00 (Pagi - Siang):</div>
                 <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
                   {HOURS_24.slice(0, 12).map((h) => {
-                    const code = formData.hourlyWeather?.[h] || 'C';
-                    const leg = WEATHER_LEGEND.find((l) => l.code === code);
+                    const raw = formData.hourlyWeather?.[h];
+                    const code = (raw !== undefined && raw !== null ? raw : '') as HourlyWeatherCode;
+                    const leg = WEATHER_LEGEND.find((l) => l.code === code) || WEATHER_LEGEND[0];
                     return (
                       <button
                         key={h}
                         type="button"
                         onClick={() => handleHourlyWeatherToggle(h)}
-                        className={`p-2 rounded-lg border text-center transition-all shadow-2xs hover:scale-105 ${leg?.color || 'bg-slate-50'}`}
+                        className={`p-2 rounded-lg border text-center transition-all shadow-2xs hover:scale-105 ${leg?.color || 'bg-white text-slate-500 border-slate-300'}`}
                       >
                         <div className="font-mono text-[10px] text-slate-600">{h}</div>
-                        <div className="text-base font-bold font-mono mt-0.5">{code}</div>
-                        <div className="text-[9px] uppercase tracking-wide truncate">{leg?.label}</div>
+                        <div className="text-base font-bold font-mono mt-0.5">{code || '-'}</div>
+                        <div className="text-[9px] uppercase tracking-wide truncate">{leg?.label || 'Kosong'}</div>
                       </button>
                     );
                   })}
@@ -2784,18 +2529,19 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                 <div className="text-xs font-bold text-slate-700 pt-2">13:00 s/d 24:00 (Siang - Malam):</div>
                 <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
                   {HOURS_24.slice(12, 24).map((h) => {
-                    const code = formData.hourlyWeather?.[h] || 'C';
-                    const leg = WEATHER_LEGEND.find((l) => l.code === code);
+                    const raw = formData.hourlyWeather?.[h];
+                    const code = (raw !== undefined && raw !== null ? raw : '') as HourlyWeatherCode;
+                    const leg = WEATHER_LEGEND.find((l) => l.code === code) || WEATHER_LEGEND[0];
                     return (
                       <button
                         key={h}
                         type="button"
                         onClick={() => handleHourlyWeatherToggle(h)}
-                        className={`p-2 rounded-lg border text-center transition-all shadow-2xs hover:scale-105 ${leg?.color || 'bg-slate-50'}`}
+                        className={`p-2 rounded-lg border text-center transition-all shadow-2xs hover:scale-105 ${leg?.color || 'bg-white text-slate-500 border-slate-300'}`}
                       >
                         <div className="font-mono text-[10px] text-slate-600">{h}</div>
-                        <div className="text-base font-bold font-mono mt-0.5">{code}</div>
-                        <div className="text-[9px] uppercase tracking-wide truncate">{leg?.label}</div>
+                        <div className="text-base font-bold font-mono mt-0.5">{code || '-'}</div>
+                        <div className="text-[9px] uppercase tracking-wide truncate">{leg?.label || 'Kosong'}</div>
                       </button>
                     );
                   })}
@@ -3112,8 +2858,8 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                             <input
                               type="text"
                               id={`boq-cell-${idx}-0`}
-                              value={b.kode}
-                              placeholder={`1.${idx + 1}`}
+                              value={b.kode !== undefined && b.kode !== null ? b.kode : '0'}
+                              placeholder="0"
                               onDragStart={(e) => e.preventDefault()}
                               onPaste={(e) => handleBoqCellPaste(e, idx)}
                               onMouseDown={(e) => {
@@ -3129,7 +2875,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                                 }
                               }}
                               onKeyDown={(e) => handleGridKeyDown(e, 'boq', idx, 0, 4)}
-                              onChange={(e) => updateBoqCell(idx, 0, e.target.value)}
+                              onChange={(e) => updateBoqCell(idx, 0, e.target.value === '' ? '0' : e.target.value)}
                               className={`w-full h-8 px-2 text-xs font-mono font-bold border-none focus:outline-none bg-transparent focus:bg-white focus:ring-2 focus:ring-emerald-600 focus:z-10 text-slate-900 ${
                                 boqIsDragging ? 'pointer-events-none select-none' : ''
                               }`}
@@ -3612,8 +3358,8 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                             <input
                               type="text"
                               id={`bom-cell-${idx}-0`}
-                              value={m.kode}
-                              placeholder={`M-0${idx + 1}`}
+                              value={m.kode !== undefined && m.kode !== null ? m.kode : '0'}
+                              placeholder="0"
                               onDragStart={(e) => e.preventDefault()}
                               onPaste={(e) => handleBomCellPaste(e, idx)}
                               onMouseDown={(e) => {
@@ -3629,7 +3375,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                                 }
                               }}
                               onKeyDown={(e) => handleGridKeyDown(e, 'bom', idx, 0, 4)}
-                              onChange={(e) => updateBomCell(idx, 0, e.target.value)}
+                              onChange={(e) => updateBomCell(idx, 0, e.target.value === '' ? '0' : e.target.value)}
                               className={`w-full h-8 px-2 text-xs font-mono font-bold border-none focus:outline-none bg-transparent focus:bg-white focus:ring-2 focus:ring-emerald-600 focus:z-10 text-slate-900 ${
                                 bomIsDragging ? 'pointer-events-none select-none' : ''
                               }`}
@@ -3827,11 +3573,11 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
 
                 <label className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold cursor-pointer shadow-xs">
                   <Camera className="w-4 h-4" />
-                  <span>{isUploadingPhoto ? 'Memproses Foto...' : 'Ambil / Upload Foto'}</span>
+                  <span>{isUploadingPhoto ? 'Memproses Foto...' : 'Ambil / Upload Foto (Bisa Pilih Sekaligus)'}</span>
                   <input
                     type="file"
                     accept="image/*"
-                    capture="environment"
+                    multiple
                     onChange={handlePhotoUpload}
                     disabled={isUploadingPhoto}
                     className="hidden"
@@ -3867,6 +3613,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                         <input
                           type="text"
                           value={photo.caption}
+                          placeholder="Kosong (opsional diisi)..."
                           onChange={(e) => {
                             const copy = [...formData.photos];
                             copy[pIdx] = { ...copy[pIdx], caption: e.target.value };
@@ -3882,204 +3629,469 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                 <div className="p-8 border border-dashed border-slate-300 rounded-lg text-center space-y-2">
                   <Camera className="w-8 h-8 text-slate-400 mx-auto" />
                   <div className="text-xs font-semibold text-slate-700">Belum ada foto dokumentasi terlampir</div>
-                  <p className="text-[11px] text-slate-500">Klik tombol di atas untuk mengambil foto langsung dari kamera HP atau galeri.</p>
+                  <p className="text-[11px] text-slate-500">Klik tombol di atas untuk memilih dan mengupload beberapa foto sekaligus.</p>
                 </div>
               )}
             </div>
           )}
 
-          {/* SECTION 5: METADATA & TANDA TANGAN */}
+          {/* SECTION 5: DETAIL DATA & TANDA TANGAN */}
           {contractorSection === 'general' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Metadata Form */}
-              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-2">
-                  Metadata Resmi Form AAA/CONS/FM-014
-                </h3>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Detail Data Form */}
+                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-2">
+                    Detail Data
+                  </h3>
 
-                <div className="space-y-3 text-xs">
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Nomor BPMPO:</label>
-                    <input
-                      type="text"
-                      value={formData.nomorBpmpo || ''}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, nomorBpmpo: e.target.value }))}
-                      className="w-full px-3 py-1.5 border border-slate-300 rounded font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Nama Paket Pekerjaan:</label>
-                    <input
-                      type="text"
-                      value={project.name}
-                      readOnly
-                      className="w-full px-3 py-1.5 border border-slate-200 bg-slate-50 rounded text-slate-700 font-medium"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Lokasi Proyek:</label>
-                    <input
-                      type="text"
-                      value={`${project.location} (${project.coordinates})`}
-                      readOnly
-                      className="w-full px-3 py-1.5 border border-slate-200 bg-slate-50 rounded text-slate-700"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Kontraktor Pelaksana:</label>
-                    <input
-                      type="text"
-                      value={project.contractorName}
-                      readOnly
-                      className="w-full px-3 py-1.5 border border-slate-200 bg-slate-50 rounded text-slate-700 font-semibold"
-                    />
-                  </div>
+                  <div className="space-y-3 text-xs">
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Nama Paket Pekerjaan:</label>
+                      <input
+                        type="text"
+                        value={project.name}
+                        readOnly
+                        className="w-full px-3 py-1.5 border border-slate-200 bg-slate-50 rounded text-slate-700 font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Lokasi Proyek:</label>
+                      <input
+                        type="text"
+                        value={project.location}
+                        readOnly
+                        className="w-full px-3 py-1.5 border border-slate-200 bg-slate-50 rounded text-slate-700 font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Kontraktor Pelaksana:</label>
+                      <input
+                        type="text"
+                        value={project.contractorName}
+                        readOnly
+                        className="w-full px-3 py-1.5 border border-slate-200 bg-slate-50 rounded text-slate-700 font-semibold"
+                      />
+                    </div>
 
-                  {/* Catatan Lapangan Field */}
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Catatan Lapangan (Kolom Catatan Dokumen):</label>
-                    <textarea
-                      rows={3}
-                      value={formData.notes ?? formData.generalNotes ?? ''}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value, generalNotes: e.target.value }))}
-                      placeholder="Pekerjaan dilaksanakan sesuai dengan jadwal dan instruksi pengawas lapangan."
-                      className="w-full px-3 py-2 border border-slate-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-slate-900 bg-white"
-                    />
-                    <p className="text-[10px] text-slate-400 mt-0.5">Catatan ini akan tampil pada kotak Catatan di sebelah daftar hadir dokumen cetak.</p>
+                    {/* Catatan Lapangan Field */}
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Catatan Lapangan (Kolom Catatan Dokumen):</label>
+                      <textarea
+                        rows={3}
+                        value={formData.notes ?? formData.generalNotes ?? ''}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value, generalNotes: e.target.value }))}
+                        placeholder="Pekerjaan dilaksanakan sesuai dengan jadwal dan instruksi pengawas lapangan."
+                        className="w-full px-3 py-2 border border-slate-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-slate-900 bg-white"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-0.5">Catatan ini akan tampil pada kotak Catatan di sebelah daftar hadir dokumen cetak.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form Edit SPV & HSE */}
+                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-2">
+                    Pengawas Lapangan (SPV & HSE)
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Edit nama, jabatan, dan instansi/perusahaan untuk Supervisor dan HSE Officer pada daftar hadir laporan.
+                  </p>
+
+                  <div className="space-y-4 text-xs">
+                    {/* SPV Form */}
+                    {(() => {
+                      const spv = (formData.attendees && formData.attendees[0]) || DEFAULT_ATTENDEES[0];
+                      return (
+                        <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                          <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-blue-600 inline-block"></span>
+                            <span>Supervisor (SPV)</span>
+                          </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div>
+                              <label className="block text-[10px] text-slate-500 mb-0.5">Nama Lengkap:</label>
+                              <input
+                                type="text"
+                                value={spv.nama || spv.name || ''}
+                                onChange={(e) => {
+                                  const atts = [...(formData.attendees && formData.attendees.length > 0 ? formData.attendees : DEFAULT_ATTENDEES)];
+                                  atts[0] = { ...atts[0], nama: e.target.value, name: e.target.value };
+                                  setFormData((prev) => ({ ...prev, attendees: atts }));
+                                }}
+                                className="w-full px-2 py-1 border border-slate-300 rounded bg-white text-xs"
+                                placeholder="Nama SPV..."
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-slate-500 mb-0.5">Jabatan:</label>
+                              <input
+                                type="text"
+                                value={spv.jabatan || spv.position || ''}
+                                onChange={(e) => {
+                                  const atts = [...(formData.attendees && formData.attendees.length > 0 ? formData.attendees : DEFAULT_ATTENDEES)];
+                                  atts[0] = { ...atts[0], jabatan: e.target.value, position: e.target.value };
+                                  setFormData((prev) => ({ ...prev, attendees: atts }));
+                                }}
+                                className="w-full px-2 py-1 border border-slate-300 rounded bg-white text-xs"
+                                placeholder="Supervisor"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-slate-500 mb-0.5">Instansi / Perusahaan:</label>
+                              <input
+                                type="text"
+                                value={spv.instansi || spv.company || ''}
+                                onChange={(e) => {
+                                  const atts = [...(formData.attendees && formData.attendees.length > 0 ? formData.attendees : DEFAULT_ATTENDEES)];
+                                  atts[0] = { ...atts[0], instansi: e.target.value, company: e.target.value };
+                                  setFormData((prev) => ({ ...prev, attendees: atts }));
+                                }}
+                                className="w-full px-2 py-1 border border-slate-300 rounded bg-white text-xs"
+                                placeholder="Nama Instansi..."
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* HSE Form */}
+                    {(() => {
+                      const hse = (formData.attendees && formData.attendees[1]) || DEFAULT_ATTENDEES[1];
+                      return (
+                        <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                          <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block"></span>
+                            <span>HSE Officer</span>
+                          </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div>
+                              <label className="block text-[10px] text-slate-500 mb-0.5">Nama Lengkap:</label>
+                              <input
+                                type="text"
+                                value={hse.nama || hse.name || ''}
+                                onChange={(e) => {
+                                  const atts = [...(formData.attendees && formData.attendees.length > 0 ? formData.attendees : DEFAULT_ATTENDEES)];
+                                  while (atts.length < 2) {
+                                    atts.push(DEFAULT_ATTENDEES[atts.length] || { id: `att-${Date.now()}`, nama: '', jabatan: 'HSE', instansi: '' });
+                                  }
+                                  atts[1] = { ...atts[1], nama: e.target.value, name: e.target.value };
+                                  setFormData((prev) => ({ ...prev, attendees: atts }));
+                                }}
+                                className="w-full px-2 py-1 border border-slate-300 rounded bg-white text-xs"
+                                placeholder="Nama HSE..."
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-slate-500 mb-0.5">Jabatan:</label>
+                              <input
+                                type="text"
+                                value={hse.jabatan || hse.position || ''}
+                                onChange={(e) => {
+                                  const atts = [...(formData.attendees && formData.attendees.length > 0 ? formData.attendees : DEFAULT_ATTENDEES)];
+                                  while (atts.length < 2) {
+                                    atts.push(DEFAULT_ATTENDEES[atts.length] || { id: `att-${Date.now()}`, nama: '', jabatan: 'HSE', instansi: '' });
+                                  }
+                                  atts[1] = { ...atts[1], jabatan: e.target.value, position: e.target.value };
+                                  setFormData((prev) => ({ ...prev, attendees: atts }));
+                                }}
+                                className="w-full px-2 py-1 border border-slate-300 rounded bg-white text-xs"
+                                placeholder="HSE Officer"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-slate-500 mb-0.5">Instansi / Perusahaan:</label>
+                              <input
+                                type="text"
+                                value={hse.instansi || hse.company || ''}
+                                onChange={(e) => {
+                                  const atts = [...(formData.attendees && formData.attendees.length > 0 ? formData.attendees : DEFAULT_ATTENDEES)];
+                                  while (atts.length < 2) {
+                                    atts.push(DEFAULT_ATTENDEES[atts.length] || { id: `att-${Date.now()}`, nama: '', jabatan: 'HSE', instansi: '' });
+                                  }
+                                  atts[1] = { ...atts[1], instansi: e.target.value, company: e.target.value };
+                                  setFormData((prev) => ({ ...prev, attendees: atts }));
+                                }}
+                                className="w-full px-2 py-1 border border-slate-300 rounded bg-white text-xs"
+                                placeholder="Nama Instansi..."
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
 
-              {/* 3 Parties Signatory Setup */}
+              {/* Signatories Setup - Template Kiri ke Kanan: Diajukan Oleh (PM Kontraktor) -> Disetujui Oleh (PM Opsco) -> Disetujui Oleh (Plant Manager Opsco) */}
               <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-2">
-                  Penandatangan (Mengetahui / Menyetujui)
-                </h3>
-                <p className="text-[11px] text-slate-500">
-                  Nama dan jabatan untuk 3 kolom tanda tangan resmi hardcopy
-                </p>
+                <div className="border-b border-slate-100 pb-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                    Penandatangan Dokumen (Kiri ke Kanan)
+                  </h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Urutan dan informasi penandatangan dapat disesuaikan nama, jabatan, instansi/perusahaan, dan label persetujuan.
+                  </p>
+                </div>
 
-                <div className="space-y-4 text-xs">
-                  {/* Kontraktor */}
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
-                    <span className="font-bold text-slate-900">1. Project Manager Kontraktor ({project.contractorName})</span>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[10px] text-slate-500 mb-0.5">Nama Lengkap:</label>
-                        <input
-                          type="text"
-                          value={formData.contractorSignatory?.signedBy || ''}
-                          onChange={(e) => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              contractorSignatory: {
-                                ...(prev.contractorSignatory || DEFAULT_SIGNATORIES.contractor),
-                                signedBy: e.target.value,
-                              },
-                            }));
-                          }}
-                          className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] text-slate-500 mb-0.5">Jabatan:</label>
-                        <input
-                          type="text"
-                          value={formData.contractorSignatory?.title || ''}
-                          onChange={(e) => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              contractorSignatory: {
-                                ...(prev.contractorSignatory || DEFAULT_SIGNATORIES.contractor),
-                                title: e.target.value,
-                              },
-                            }));
-                          }}
-                          className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
-                        />
-                      </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                  {/* Kolom 1 (Kiri): Diajukan Oleh */}
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900">1. Kolom Kiri</span>
+                      <span className="text-[10px] px-2 py-0.5 bg-blue-100 text-blue-800 rounded font-semibold">
+                        Kontraktor
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-slate-500 mb-0.5">Label Aksi:</label>
+                      <input
+                        type="text"
+                        value={formData.contractorSignatory?.actionLabel || 'Diajukan Oleh'}
+                        onChange={(e) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            contractorSignatory: {
+                              ...(prev.contractorSignatory || DEFAULT_SIGNATORIES.contractor),
+                              actionLabel: e.target.value,
+                            },
+                          }));
+                        }}
+                        className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
+                        placeholder="Diajukan Oleh"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-slate-500 mb-0.5">Perusahaan / Instansi:</label>
+                      <input
+                        type="text"
+                        value={formData.contractorSignatory?.companyName || ''}
+                        onChange={(e) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            contractorSignatory: {
+                              ...(prev.contractorSignatory || DEFAULT_SIGNATORIES.contractor),
+                              companyName: e.target.value,
+                            },
+                          }));
+                        }}
+                        className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
+                        placeholder="Nama PT / Instansi..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-slate-500 mb-0.5">Nama Lengkap:</label>
+                      <input
+                        type="text"
+                        value={formData.contractorSignatory?.signedBy || ''}
+                        onChange={(e) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            contractorSignatory: {
+                              ...(prev.contractorSignatory || DEFAULT_SIGNATORIES.contractor),
+                              signedBy: e.target.value,
+                            },
+                          }));
+                        }}
+                        className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
+                        placeholder="Nama Penandatangan..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-slate-500 mb-0.5">Jabatan:</label>
+                      <input
+                        type="text"
+                        value={formData.contractorSignatory?.title || ''}
+                        onChange={(e) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            contractorSignatory: {
+                              ...(prev.contractorSignatory || DEFAULT_SIGNATORIES.contractor),
+                              title: e.target.value,
+                            },
+                          }));
+                        }}
+                        className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
+                        placeholder="Jabatan..."
+                      />
                     </div>
                   </div>
 
-                  {/* Konsultan Supervisi */}
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
-                    <span className="font-bold text-slate-900">2. Konsultan Supervisi ({formData.consultantSignatory?.companyName || 'PT KeylaAubreyRapli'})</span>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[10px] text-slate-500 mb-0.5">Nama Team Leader:</label>
-                        <input
-                          type="text"
-                          value={formData.consultantSignatory?.signedBy || ''}
-                          onChange={(e) => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              consultantSignatory: {
-                                ...(prev.consultantSignatory || DEFAULT_SIGNATORIES.consultant),
-                                signedBy: e.target.value,
-                              },
-                            }));
-                          }}
-                          className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] text-slate-500 mb-0.5">Jabatan:</label>
-                        <input
-                          type="text"
-                          value={formData.consultantSignatory?.title || ''}
-                          onChange={(e) => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              consultantSignatory: {
-                                ...(prev.consultantSignatory || DEFAULT_SIGNATORIES.consultant),
-                                title: e.target.value,
-                              },
-                            }));
-                          }}
-                          className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
-                        />
-                      </div>
+                  {/* Kolom 2 (Tengah): Disetujui Oleh (PM Opsco) */}
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900">2. Kolom Tengah</span>
+                      <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-semibold">
+                        PM Opsco
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-slate-500 mb-0.5">Label Aksi:</label>
+                      <input
+                        type="text"
+                        value={formData.consultantSignatory?.actionLabel || 'Disetujui Oleh'}
+                        onChange={(e) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            consultantSignatory: {
+                              ...(prev.consultantSignatory || DEFAULT_SIGNATORIES.consultant),
+                              actionLabel: e.target.value,
+                            },
+                          }));
+                        }}
+                        className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
+                        placeholder="Disetujui Oleh"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-slate-500 mb-0.5">Perusahaan / Instansi:</label>
+                      <input
+                        type="text"
+                        value={formData.consultantSignatory?.companyName || ''}
+                        onChange={(e) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            consultantSignatory: {
+                              ...(prev.consultantSignatory || DEFAULT_SIGNATORIES.consultant),
+                              companyName: e.target.value,
+                            },
+                          }));
+                        }}
+                        className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
+                        placeholder="Nama PT / Instansi..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-slate-500 mb-0.5">Nama Lengkap:</label>
+                      <input
+                        type="text"
+                        value={formData.consultantSignatory?.signedBy || ''}
+                        onChange={(e) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            consultantSignatory: {
+                              ...(prev.consultantSignatory || DEFAULT_SIGNATORIES.consultant),
+                              signedBy: e.target.value,
+                            },
+                          }));
+                        }}
+                        className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
+                        placeholder="Nama Penandatangan..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-slate-500 mb-0.5">Jabatan:</label>
+                      <input
+                        type="text"
+                        value={formData.consultantSignatory?.title || ''}
+                        onChange={(e) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            consultantSignatory: {
+                              ...(prev.consultantSignatory || DEFAULT_SIGNATORIES.consultant),
+                              title: e.target.value,
+                            },
+                          }));
+                        }}
+                        className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
+                        placeholder="Jabatan..."
+                      />
                     </div>
                   </div>
 
-                  {/* PMO Owner */}
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
-                    <span className="font-bold text-slate-900">3. Project Manager PMO ({formData.pmoSignatory?.companyName || 'PT AubreyKeylaRapli'})</span>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[10px] text-slate-500 mb-0.5">Nama PMO:</label>
-                        <input
-                          type="text"
-                          value={formData.pmoSignatory?.signedBy || ''}
-                          onChange={(e) => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              pmoSignatory: {
-                                ...(prev.pmoSignatory || DEFAULT_SIGNATORIES.pmo),
-                                signedBy: e.target.value,
-                              },
-                            }));
-                          }}
-                          className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] text-slate-500 mb-0.5">Jabatan:</label>
-                        <input
-                          type="text"
-                          value={formData.pmoSignatory?.title || ''}
-                          onChange={(e) => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              pmoSignatory: {
-                                ...(prev.pmoSignatory || DEFAULT_SIGNATORIES.pmo),
-                                title: e.target.value,
-                              },
-                            }));
-                          }}
-                          className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
-                        />
-                      </div>
+                  {/* Kolom 3 (Kanan): Disetujui Oleh (Plant Manager Opsco) */}
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900">3. Kolom Kanan</span>
+                      <span className="text-[10px] px-2 py-0.5 bg-purple-100 text-purple-800 rounded font-semibold">
+                        Plant Manager Opsco
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-slate-500 mb-0.5">Label Aksi:</label>
+                      <input
+                        type="text"
+                        value={formData.pmoSignatory?.actionLabel || 'Disetujui Oleh'}
+                        onChange={(e) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            pmoSignatory: {
+                              ...(prev.pmoSignatory || DEFAULT_SIGNATORIES.pmo),
+                              actionLabel: e.target.value,
+                            },
+                          }));
+                        }}
+                        className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
+                        placeholder="Disetujui Oleh"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-slate-500 mb-0.5">Perusahaan / Instansi:</label>
+                      <input
+                        type="text"
+                        value={formData.pmoSignatory?.companyName || ''}
+                        onChange={(e) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            pmoSignatory: {
+                              ...(prev.pmoSignatory || DEFAULT_SIGNATORIES.pmo),
+                              companyName: e.target.value,
+                            },
+                          }));
+                        }}
+                        className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
+                        placeholder="Nama PT / Instansi..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-slate-500 mb-0.5">Nama Lengkap:</label>
+                      <input
+                        type="text"
+                        value={formData.pmoSignatory?.signedBy || ''}
+                        onChange={(e) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            pmoSignatory: {
+                              ...(prev.pmoSignatory || DEFAULT_SIGNATORIES.pmo),
+                              signedBy: e.target.value,
+                            },
+                          }));
+                        }}
+                        className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
+                        placeholder="Nama Penandatangan..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-slate-500 mb-0.5">Jabatan:</label>
+                      <input
+                        type="text"
+                        value={formData.pmoSignatory?.title || ''}
+                        onChange={(e) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            pmoSignatory: {
+                              ...(prev.pmoSignatory || DEFAULT_SIGNATORIES.pmo),
+                              title: e.target.value,
+                            },
+                          }));
+                        }}
+                        className="w-full px-2 py-1 border border-slate-300 rounded bg-white"
+                        placeholder="Jabatan..."
+                      />
                     </div>
                   </div>
                 </div>

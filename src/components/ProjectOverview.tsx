@@ -112,18 +112,20 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                         </button>
                       ))}
                     </div>
-                    <div className="py-1">
-                      <button
-                        onClick={() => {
-                          setDropdownOpen(false);
-                          setShowProjectModal(true);
-                        }}
-                        className="w-full text-left px-3 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50 flex items-center gap-1.5"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        Create New Project
-                      </button>
-                    </div>
+                    {currentRole === 'pmo' && (
+                      <div className="py-1">
+                        <button
+                          onClick={() => {
+                            setDropdownOpen(false);
+                            setShowProjectModal(true);
+                          }}
+                          className="w-full text-left px-3 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50 flex items-center gap-1.5"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Create New Project
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -289,13 +291,13 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Project Code *</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">PR/PO ID *</label>
                 <input
                   type="text"
                   required
                   value={newProjectCode}
                   onChange={(e) => setNewProjectCode(e.target.value)}
-                  placeholder="e.g. SBH-PKG-02"
+                  placeholder="e.g. PR-2026-001 / RTS-01"
                   className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-slate-900 font-mono"
                 />
               </div>
@@ -306,18 +308,18 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                   type="text"
                   value={newContractorName}
                   onChange={(e) => setNewContractorName(e.target.value)}
-                  placeholder="e.g. PT Wijaya Karya - Sumitomo JV"
+                  placeholder="e.g. PT. Bestindo Putra Mandiri"
                   className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-slate-900"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">PMO Lead / Supervising Engineer</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Project Manager</label>
                 <input
                   type="text"
                   value={newPmoLead}
                   onChange={(e) => setNewPmoLead(e.target.value)}
-                  placeholder="e.g. Engr. Michael Tan, PMP"
+                  placeholder="e.g. Simun Riyanto / Winduri Purba"
                   className="w-full text-xs px-3 py-2 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-slate-900"
                 />
               </div>

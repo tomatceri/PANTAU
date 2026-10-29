@@ -4,7 +4,7 @@ import {
   Building2, MapPin, Plus, ArrowRight, CheckCircle2, 
   AlertTriangle, AlertCircle, Calendar, Clock, Eye, 
   ShieldCheck, HardHat, Info, ChevronRight, CheckCheck, 
-  RotateCcw, RefreshCw 
+  RotateCcw, RefreshCw, Trash2 
 } from 'lucide-react';
 import { getRealTodayStr } from '../utils/formDefaults';
 import { getMonthCalendarSummary, parseLocalDate } from '../utils/calendarStatus';
@@ -16,6 +16,7 @@ interface ProjectListProps {
   onSelectProject: (project: Project) => void;
   onSelectReportForReview: (project: Project, reportDate: string) => void;
   onAddProject: (newProject: Project) => void;
+  onDeleteProject?: (projectId: string) => void;
   onToggleProjectStatus?: (projectId: string, newStatus: 'Active' | 'Completed') => void;
   onSyncFromCloud?: () => Promise<void>;
   isSyncingCloud?: boolean;
@@ -27,12 +28,14 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   currentRole,
   onSelectProject,
   onAddProject,
+  onDeleteProject,
   onSelectReportForReview,
   onToggleProjectStatus,
   onSyncFromCloud,
   isSyncingCloud,
 }) => {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [projectFilterTab, setProjectFilterTab] = useState<'all' | 'active' | 'completed'>('all');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -76,6 +79,12 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     };
 
     onAddProject(newProj);
+    setName('');
+    setCode('');
+    setContractor('');
+    setPmo('');
+    setLocation('');
+    setShowAddModal(false);
     onSelectProject(newProj);
   };
 
@@ -263,9 +272,6 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-xs font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200">
-                          {repProject.code}
-                        </span>
                         <span className="text-xs font-bold text-slate-900">
                           {repProject.name}
                         </span>
@@ -369,14 +375,23 @@ export const ProjectList: React.FC<ProjectListProps> = ({
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors shrink-0 shadow-xs cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Tambah Proyek Baru</span>
-          </button>
+          {currentRole === 'pmo' && (
+            <button
+              type="button"
+              onClick={() => {
+                setName('');
+                setCode('');
+                setContractor('');
+                setPmo('');
+                setLocation('');
+                setShowAddModal(true);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors shrink-0 shadow-xs cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Tambah Proyek Baru</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -408,12 +423,9 @@ export const ProjectList: React.FC<ProjectListProps> = ({
               }`}
             >
               <div className="space-y-3">
-                {/* Kode Proyek, Status Aktif/Selesai & Tombol Penyelesaian Proyek */}
+                {/* Status Peninjauan, Status Aktif/Selesai & Tombol Penyelesaian Proyek */}
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
-                      {proj.code}
-                    </span>
                     {submittedCount > 0 && currentRole === 'pmo' && !isCompleted && (
                       <span className="text-[11px] font-bold px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full border border-blue-300">
                         {submittedCount} Perlu Ditinjau
@@ -452,6 +464,22 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                         {isCompleted ? 'Aktifkan Lagi' : 'Tandai Selesai'}
                       </button>
                     )}
+
+                    {/* Fitur Hapus Proyek (Khusus PMO) */}
+                    {currentRole === 'pmo' && onDeleteProject && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProjectToDelete(proj);
+                        }}
+                        className="text-[11px] font-semibold px-2 py-1 rounded transition-colors border border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 flex items-center gap-1 shadow-2xs"
+                        title="Hapus proyek ini secara permanen"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Hapus</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -473,7 +501,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                   </div>
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span>PMO Lead: <strong className="text-slate-900">{proj.pmoLead}</strong></span>
+                    <span>Project Manager: <strong className="text-slate-900">{proj.pmoLead}</strong></span>
                   </div>
                   <div className="flex items-center gap-2">
                     <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -543,11 +571,11 @@ export const ProjectList: React.FC<ProjectListProps> = ({
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Kode Proyek</label>
+                <label className="block font-semibold text-slate-700 mb-1">PR/PO ID</label>
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: AAA/CONS/FM-014"
+                  placeholder="Contoh: PR-2026-001 / PO-98124 / RTS-01"
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-mono"
@@ -558,7 +586,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 <label className="block font-semibold text-slate-700 mb-1">Nama Kontraktor</label>
                 <input
                   type="text"
-                  placeholder="Contoh: PT Mandiri"
+                  placeholder="Contoh: PT. Bestindo Putra Mandiri"
                   value={contractor}
                   onChange={(e) => setContractor(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500"
@@ -566,10 +594,10 @@ export const ProjectList: React.FC<ProjectListProps> = ({
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Nama PMO / Lead Pengawas</label>
+                <label className="block font-semibold text-slate-700 mb-1">Project Manager</label>
                 <input
                   type="text"
-                  placeholder="Contoh: Aubrey F., M.T. (PT AubreyKeylaRapli)"
+                  placeholder="Contoh: Simun Riyanto / Winduri Purba"
                   value={pmo}
                   onChange={(e) => setPmo(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500"
@@ -603,6 +631,55 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL KONFIRMASI HAPUS PROYEK */}
+      {projectToDelete && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4 animate-scale-up">
+            <div className="flex items-center gap-3 text-rose-600 border-b border-slate-100 pb-3">
+              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Hapus Proyek Konstruksi?</h3>
+                <p className="text-xs text-slate-500">Tindakan ini tidak dapat dibatalkan.</p>
+              </div>
+            </div>
+
+            <div className="text-xs text-slate-600 space-y-2 bg-rose-50/60 border border-rose-200 p-3.5 rounded-lg">
+              <p>
+                Anda akan menghapus proyek <strong className="text-slate-900">"{projectToDelete.name}"</strong> (ID: <span className="font-mono font-bold text-slate-900">{projectToDelete.code}</span>).
+              </p>
+              <p className="text-rose-800 font-medium">
+                ⚠️ Seluruh data histori kalender harian dan laporan verifikasi terkait proyek ini akan ikut terhapus dari sistem.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setProjectToDelete(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onDeleteProject) {
+                    onDeleteProject(projectToDelete.id);
+                  }
+                  setProjectToDelete(null);
+                }}
+                className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Ya, Hapus Proyek Sekarang</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

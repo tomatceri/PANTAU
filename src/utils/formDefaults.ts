@@ -8,16 +8,19 @@ export const HOURS_24: string[] = [
 ];
 
 export const WEATHER_LEGEND: { code: HourlyWeatherCode; label: string; desc: string; color: string }[] = [
+  { code: '', label: 'Kosong (-)', desc: 'Tidak ada pencatatan / di luar jam kerja', color: 'bg-white text-slate-500 border-slate-300' },
   { code: 'C', label: 'Cerah', desc: 'Cuaca cerah panas / tanpa hambatan', color: 'bg-amber-100 text-amber-900 border-amber-300' },
   { code: 'M', label: 'Mendung', desc: 'Berawan / mendung tipis', color: 'bg-slate-200 text-slate-800 border-slate-300' },
   { code: 'G', label: 'Gerimis', desc: 'Hujan ringan / gerimis', color: 'bg-blue-100 text-blue-900 border-blue-300' },
   { code: 'H', label: 'Hujan', desc: 'Hujan lebat / pekerjaan terhenti (Downtime EOT)', color: 'bg-indigo-100 text-indigo-900 border-indigo-400 font-bold' },
 ];
 
-export function createDefault24hWeather(pattern: 'clear' | 'afternoon_rain' | 'cloudy' = 'clear'): Record<string, HourlyWeatherCode> {
+export function createDefault24hWeather(pattern: 'clear' | 'afternoon_rain' | 'cloudy' | 'empty' = 'empty'): Record<string, HourlyWeatherCode> {
   const result: Record<string, HourlyWeatherCode> = {};
   for (const hour of HOURS_24) {
-    if (pattern === 'afternoon_rain') {
+    if (pattern === 'empty') {
+      result[hour] = '';
+    } else if (pattern === 'afternoon_rain') {
       const hNum = parseInt(hour.split(':')[0], 10);
       if (hNum >= 14 && hNum <= 16) {
         result[hour] = 'H';
@@ -50,8 +53,8 @@ export function calculateWeatherDowntime(hourly: Record<string, HourlyWeatherCod
 }
 
 export const DEFAULT_ATTENDEES: AttendeeItem[] = [
-  { id: 'att-1', nama: 'Adhe Juliawaludin', jabatan: 'Supervisor', instansi: '' },
-  { id: 'att-2', nama: 'Anis Sulfuad', jabatan: 'HSE', instansi: '' },
+  { id: 'att-1', nama: '', jabatan: 'Supervisor', instansi: '' },
+  { id: 'att-2', nama: '', jabatan: 'HSE', instansi: '' },
 ];
 
 export const DEFAULT_MANPOWER: ManpowerEntry[] = [
@@ -99,22 +102,25 @@ export const DEFAULT_SIGNATORIES: {
   pmo: SignatoryInfo;
 } = {
   contractor: {
-    signedBy: 'Ir. Budi Santoso',
-    title: 'Project Manager',
-    companyName: 'PT Mandiri',
-    roleLabel: 'Project Manager',
+    actionLabel: 'Diajukan Oleh',
+    signedBy: '',
+    title: '',
+    companyName: '',
+    roleLabel: '',
   },
   consultant: {
-    signedBy: 'Hendra Wijaya, ST',
-    title: 'Team Leader',
-    companyName: 'PT KeylaAubreyRapli',
-    roleLabel: 'Project Manager Konsultan,',
+    actionLabel: 'Disetujui Oleh',
+    signedBy: '',
+    title: '',
+    companyName: '',
+    roleLabel: '',
   },
   pmo: {
-    signedBy: 'Aubrey F., M.T.',
-    title: 'Project Manager',
-    companyName: 'PT AubreyKeylaRapli',
-    roleLabel: 'Project Manager,',
+    actionLabel: 'Disetujui Oleh',
+    signedBy: '',
+    title: '',
+    companyName: '',
+    roleLabel: '',
   },
 };
 

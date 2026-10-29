@@ -238,8 +238,7 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                 <thead>
                   <tr className="bg-slate-100 border-b border-black text-center font-bold h-6">
                     <th className="border-r border-black py-1 px-1">Peralatan</th>
-                    <th className="border-r border-black py-1 px-0.5 w-10">Jumlah</th>
-                    <th className="border-r border-black py-1 px-0.5 w-14">Jumlah Stok</th>
+                    <th className="border-r border-black py-1 px-0.5 w-12">Jumlah</th>
                     <th className="py-1 px-1">Keterangan</th>
                   </tr>
                 </thead>
@@ -247,15 +246,13 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                   {equipment.slice(0, 12).map((eq, idx) => (
                     <tr key={eq.id || idx} className="h-[18px]">
                       <td className="border-r border-black px-1.5 truncate font-medium">{eq.equipmentName}</td>
-                      <td className="border-r border-black text-center font-mono px-0.5">{eq.count}</td>
-                      <td className="border-r border-black text-center font-mono px-0.5">{eq.status === 'Standby' ? eq.count : 0}</td>
-                      <td className="px-1 text-[8px] truncate">{!eq.status ? '-' : eq.status === 'Operating' ? 'Operasi' : eq.status}</td>
+                      <td className="border-r border-black text-center font-mono px-0.5">{eq.count ?? 0}</td>
+                      <td className="px-1 text-[8px] truncate">{eq.status || '-'}</td>
                     </tr>
                   ))}
                   {Array.from({ length: Math.max(0, 12 - equipment.length) }).map((_, i) => (
                     <tr key={`eq-empty-${i}`} className="h-[18px]">
                       <td className="border-r border-black px-1.5 text-slate-300">-</td>
-                      <td className="border-r border-black text-center font-mono text-slate-300">-</td>
                       <td className="border-r border-black text-center font-mono text-slate-300">-</td>
                       <td className="px-1 text-slate-300">-</td>
                     </tr>
@@ -267,10 +264,7 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                     <td className="border-r border-black text-center font-mono py-0.5 font-bold">
                       {equipment.reduce((acc, cur) => acc + (cur.count || 0), 0)}
                     </td>
-                    <td className="border-r border-black text-center font-mono py-0.5 font-bold">
-                      {equipment.filter((e) => e.status === 'Standby').reduce((acc, cur) => acc + cur.count, 0)}
-                    </td>
-                    <td className="px-1 text-[8px] text-slate-600 font-normal truncate">Siap kerja</td>
+                    <td className="px-1 text-[8px] text-slate-600 font-normal truncate">Unit Terdata</td>
                   </tr>
                 </tbody>
               </table>
@@ -289,8 +283,8 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                 <tbody className="divide-y divide-black text-[8px] font-mono">
                   {morningHours.map((mHour, idx) => {
                     const aHour = afternoonHours[idx];
-                    const mCode = hourlyWeather[mHour] || 'C';
-                    const aCode = hourlyWeather[aHour] || 'C';
+                    const mCode = hourlyWeather[mHour] || '';
+                    const aCode = hourlyWeather[aHour] || '';
 
                     return (
                       <tr key={mHour} className="h-[18px]">
@@ -298,13 +292,13 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                           {mHour}
                         </td>
                         <td className={`border-r border-black text-center px-1 w-5 ${getWeatherBadgeClass(mCode)}`}>
-                          {mCode}
+                          {mCode || '-'}
                         </td>
                         <td className="border-r border-black text-center px-0.5 bg-slate-50 text-[7.5px] w-8">
                           {aHour}
                         </td>
                         <td className={`border-r border-black text-center px-1 w-5 ${getWeatherBadgeClass(aCode)}`}>
-                          {aCode}
+                          {aCode || '-'}
                         </td>
                         {/* Legend on the right side on specific rows */}
                         {idx === 0 && (
@@ -363,7 +357,7 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
               <tbody className="divide-y divide-black">
                 {leftBoq.map((item, idx) => (
                   <tr key={item.id || idx} className="h-5">
-                    <td className="border-r border-black text-center font-mono px-1">{item.kode}</td>
+                    <td className="border-r border-black text-center font-mono px-1">{item.kode && item.kode !== '0' ? item.kode : ''}</td>
                     <td className="border-r border-black px-1.5 truncate">{item.deskripsi}</td>
                     <td className="border-r border-black text-center px-1">{item.satuan}</td>
                     <td className="text-center font-mono font-semibold px-1.5">{item.install}</td>
@@ -393,7 +387,7 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
               <tbody className="divide-y divide-black">
                 {rightBoq.map((item, idx) => (
                   <tr key={item.id || idx} className="h-5">
-                    <td className="border-r border-black text-center font-mono px-1">{item.kode}</td>
+                    <td className="border-r border-black text-center font-mono px-1">{item.kode && item.kode !== '0' ? item.kode : ''}</td>
                     <td className="border-r border-black px-1.5 truncate">{item.deskripsi}</td>
                     <td className="border-r border-black text-center px-1">{item.satuan}</td>
                     <td className="text-center font-mono font-semibold px-1.5">{item.install}</td>
@@ -431,7 +425,7 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
               <tbody className="divide-y divide-black">
                 {leftBom.map((item, idx) => (
                   <tr key={item.id || idx} className="h-5">
-                    <td className="border-r border-black text-center font-mono px-1">{item.kode}</td>
+                    <td className="border-r border-black text-center font-mono px-1">{item.kode && item.kode !== '0' ? item.kode : ''}</td>
                     <td className="border-r border-black px-1.5 truncate">{item.jenisMaterial}</td>
                     <td className="border-r border-black text-center px-1">{item.satuan}</td>
                     <td className="text-center font-mono font-semibold px-1.5">{item.install}</td>
@@ -461,7 +455,7 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
               <tbody className="divide-y divide-black">
                 {rightBom.map((item, idx) => (
                   <tr key={item.id || idx} className="h-5">
-                    <td className="border-r border-black text-center font-mono px-1">{item.kode}</td>
+                    <td className="border-r border-black text-center font-mono px-1">{item.kode && item.kode !== '0' ? item.kode : ''}</td>
                     <td className="border-r border-black px-1.5 truncate">{item.jenisMaterial}</td>
                     <td className="border-r border-black text-center px-1">{item.satuan}</td>
                     <td className="text-center font-mono font-semibold px-1.5">{item.install}</td>
@@ -480,111 +474,85 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
           </div>
         </div>
 
-        {/* LAMPIRAN DOKUMENTASI FOTO LAPANGAN (Positioned BEFORE Mengetahui / Menyetujui) */}
-        <div className="border border-black mb-1.5">
-          <div className="bg-slate-100 border-b border-black text-center font-bold text-[9px] sm:text-[10px] py-0.5 uppercase tracking-wider">
-            Lampiran Dokumentasi Foto Lapangan
+        {/* LAMPIRAN DOKUMENTASI FOTO (Clean strip without header bar, no borders, uniform identical sizes matching screenshot) */}
+        {report.photos && report.photos.length > 0 && (
+          <div className="pt-1 pb-0 px-0 bg-white mb-1">
+            <div className="grid grid-cols-5 gap-2 items-center">
+              {report.photos.slice(0, 5).map((photo, i) => (
+                <div key={photo.id || i} className="w-full aspect-[4/5] overflow-hidden bg-slate-100 flex items-center justify-center">
+                  <img 
+                    src={photo.url} 
+                    alt={photo.caption || `Foto #${i + 1}`} 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="p-2 bg-white">
-            {report.photos && report.photos.length > 0 ? (
-              <div className="grid grid-cols-3 gap-2">
-                {report.photos.slice(0, 3).map((photo, i) => (
-                  <div key={photo.id || i} className="border border-slate-300 rounded p-1 bg-slate-50 space-y-1">
-                    <div className="relative aspect-4/3 rounded overflow-hidden bg-slate-100 border border-slate-200 max-h-28 flex items-center justify-center">
-                      <img 
-                        src={photo.url} 
-                        alt={photo.caption} 
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="text-[8px] font-medium text-slate-800 truncate px-0.5 text-center">
-                      {photo.caption || `Foto #${i + 1}`}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="py-2 text-center text-[8px] text-slate-400 italic">
-                Tidak ada lampiran foto dokumentasi untuk laporan ini.
-              </div>
-            )}
-          </div>
-        </div>
+        )}
 
-        {/* MENGETAHUI / MENYETUJUI (3 PARTY SIGNATURE BLOCK) */}
+        {/* SIGNATURE BLOCK (Matching attachment without Mengetahui / Menyetujui) */}
         <div className="border border-black mb-1.5">
-          <div className="bg-slate-100 border-b border-black text-center font-bold text-[9px] sm:text-[10px] py-0.5 uppercase">
-            Mengetahui/ Menyetujui
-          </div>
-          <div className="grid grid-cols-3 divide-x divide-black text-center text-[8.5px] sm:text-[9.5px]">
+          <div className="grid grid-cols-3 divide-x divide-black text-left text-[8.5px] sm:text-[9.5px]">
             {/* Party 1: Kontraktor */}
-            <div className="p-2 flex flex-col justify-between min-h-[85px]">
+            <div className="p-3 flex flex-col justify-between min-h-[90px]">
               <div>
-                <div className="font-semibold text-[8px] text-slate-700">Project Manager</div>
-                <div className="font-bold text-slate-900 text-[8.5px]">{report.contractorSignatory?.companyName || project.contractorName}</div>
+                <div className="text-slate-800">{report.contractorSignatory?.actionLabel || 'Diajukan Oleh'}</div>
+                <div className="text-slate-900 font-medium">{report.contractorSignatory?.companyName || project.contractorName || 'PT. Bestindo Putra Mandiri'}</div>
               </div>
-              <div className="py-1 min-h-[30px] flex items-center justify-center">
-                {report.approvalStatus === 'approved' ? (
-                  <div className="inline-flex items-center gap-1 px-2 py-0.5 border border-dashed border-emerald-600 rounded bg-emerald-50 text-emerald-800 text-[8px] font-semibold">
-                    <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                    <span>Terverifikasi Kontraktor</span>
-                  </div>
-                ) : (
-                  <div className="h-6"></div>
+              <div className="py-2 min-h-[35px] flex items-center justify-start">
+                {report.contractorSignature?.signatureDataUrl && (
+                  <img src={report.contractorSignature.signatureDataUrl} alt="TTD" className="max-h-8 object-contain" />
                 )}
               </div>
-              <div className="border-t border-slate-300 pt-1">
-                <div className="font-bold underline text-slate-900">
-                  {report.contractorSignatory?.signedBy || 'Ir. Budi Santoso'}
+              <div>
+                <div className="font-semibold text-slate-900">
+                  {report.contractorSignatory?.signedBy || ''}
                 </div>
-                <div className="text-[7.5px] text-slate-600">
-                  {report.contractorSignatory?.title || 'Project Manager'}
+                <div className="text-[8px] text-slate-700">
+                  {report.contractorSignatory?.title || ''}
                 </div>
               </div>
             </div>
 
-            {/* Party 2: Konsultan Supervisi */}
-            <div className="p-2 flex flex-col justify-between min-h-[85px]">
+            {/* Party 2: Opsco PM */}
+            <div className="p-3 flex flex-col justify-between min-h-[90px]">
               <div>
-                <div className="font-semibold text-[8px] text-slate-700">Project Manager Konsultan,</div>
-                <div className="font-bold text-slate-900 text-[8.5px]">{report.consultantSignatory?.companyName || 'PT KeylaAubreyRapli'}</div>
+                <div className="text-slate-800">{report.consultantSignatory?.actionLabel || 'Disetujui Oleh'}</div>
+                <div className="text-slate-900 font-medium">{report.consultantSignatory?.companyName || 'PT. Tirta Kencana Cahaya Mandiri'}</div>
               </div>
-              <div className="py-1 min-h-[30px] flex items-center justify-center">
-                {report.approvalStatus === 'approved' ? (
-                  <div className="inline-flex items-center gap-1 px-2 py-0.5 border border-dashed border-emerald-600 rounded bg-emerald-50 text-emerald-800 text-[8px] font-semibold">
-                    <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                    <span>Terverifikasi Supervisi</span>
-                  </div>
-                ) : (
-                  <div className="h-6"></div>
+              <div className="py-2 min-h-[35px] flex items-center justify-start">
+                {report.consultantSignatory?.signatureDataUrl && (
+                  <img src={report.consultantSignatory.signatureDataUrl} alt="TTD" className="max-h-8 object-contain" />
                 )}
               </div>
-              <div className="border-t border-slate-300 pt-1">
-                <div className="font-bold underline text-slate-900">
-                  {report.consultantSignatory?.signedBy || 'Hendra Wijaya, ST'}
+              <div>
+                <div className="font-semibold text-slate-900">
+                  {report.consultantSignatory?.signedBy || ''}
                 </div>
-                <div className="text-[7.5px] text-slate-600">
-                  {report.consultantSignatory?.title || 'Team Leader'}
+                <div className="text-[8px] text-slate-700">
+                  {report.consultantSignatory?.title || ''}
                 </div>
               </div>
             </div>
 
-            {/* Party 3: PMO / Owner */}
-            <div className="p-2 flex flex-col justify-between min-h-[85px]">
+            {/* Party 3: Opsco Plant Manager */}
+            <div className="p-3 flex flex-col justify-between min-h-[90px]">
               <div>
-                <div className="font-semibold text-[8px] text-slate-700">Project Manager,</div>
-                <div className="font-bold text-slate-900 text-[8.5px]">{report.pmoSignatory?.companyName || 'PT AubreyKeylaRapli'}</div>
+                <div className="text-slate-800">{report.pmoSignatory?.actionLabel || 'Disetujui Oleh'}</div>
+                <div className="text-slate-900 font-medium">{report.pmoSignatory?.companyName || 'PT. Tirta Kencana Cahaya Mandiri'}</div>
               </div>
-              <div className="py-1 min-h-[30px] flex items-center justify-center">
-                {/* Clean signing space for wet signature (TTD) */}
-                <div className="h-6"></div>
+              <div className="py-2 min-h-[35px] flex items-center justify-start">
+                {report.pmoSignatory?.signatureDataUrl && (
+                  <img src={report.pmoSignatory.signatureDataUrl} alt="TTD" className="max-h-8 object-contain" />
+                )}
               </div>
-              <div className="border-t border-slate-300 pt-1">
-                <div className="font-bold underline text-slate-900">
-                  {report.pmoSignatory?.signedBy || project.pmoLead.split('(')[0].trim()}
+              <div>
+                <div className="font-semibold text-slate-900">
+                  {report.pmoSignatory?.signedBy || ''}
                 </div>
-                <div className="text-[7.5px] text-slate-600">
-                  {report.pmoSignatory?.title || 'Project Manager'}
+                <div className="text-[8px] text-slate-700">
+                  {report.pmoSignatory?.title || ''}
                 </div>
               </div>
             </div>
