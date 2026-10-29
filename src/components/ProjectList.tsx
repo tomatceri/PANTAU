@@ -34,6 +34,12 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   onSyncFromCloud,
   isSyncingCloud,
 }) => {
+  // Real-time today string & current month/year for synchronized calendar counters
+  const todayStr = getRealTodayStr();
+  const todayDateObj = parseLocalDate(todayStr);
+  const currentYear = todayDateObj.getFullYear();
+  const currentMonth = todayDateObj.getMonth();
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [projectFilterTab, setProjectFilterTab] = useState<'all' | 'active' | 'completed'>('all');
@@ -42,6 +48,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   const [contractor, setContractor] = useState('');
   const [pmo, setPmo] = useState('');
   const [location, setLocation] = useState('');
+  const [startDate, setStartDate] = useState(todayStr);
 
   // Find all reports pending PMO review across all projects
   const pendingApprovalReports = allReports.filter(
@@ -52,12 +59,6 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   const needsRevisionReports = allReports.filter(
     (r) => r.approvalStatus === 'needs_revision'
   );
-
-  // Real-time today string & current month/year for synchronized calendar counters
-  const todayStr = getRealTodayStr();
-  const todayDateObj = parseLocalDate(todayStr);
-  const currentYear = todayDateObj.getFullYear();
-  const currentMonth = todayDateObj.getMonth();
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +72,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
       pmoLead: pmo.trim() || 'Tim Pengawas PMO',
       location: location.trim() || 'Lokasi Proyek',
       coordinates: '-6.2088° S, 106.8456° E',
-      startDate: todayStr,
+      startDate: startDate || todayStr,
       targetDate: '2027-12-31',
       status: 'Active',
       description: 'Pekerjaan konstruksi dan pelaporan progres fisik harian.',
@@ -84,6 +85,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     setContractor('');
     setPmo('');
     setLocation('');
+    setStartDate(todayStr);
     setShowAddModal(false);
     onSelectProject(newProj);
   };
@@ -181,9 +183,6 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                   <div key={rep.id} className="p-3.5 space-y-2 hover:bg-amber-50/40 transition-colors">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                          {repProject.code}
-                        </span>
                         <span className="text-xs font-bold text-slate-900">
                           {repProject.name}
                         </span>
@@ -384,6 +383,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 setContractor('');
                 setPmo('');
                 setLocation('');
+                setStartDate(todayStr);
                 setShowAddModal(true);
               }}
               className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors shrink-0 shadow-xs cursor-pointer"
@@ -612,6 +612,16 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Tanggal Mulai Proyek</label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-medium"
                 />
               </div>
 
