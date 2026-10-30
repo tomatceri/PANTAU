@@ -251,10 +251,11 @@ export function registerProjectMeta(project: Project) {
 }
 
 const LOCAL_STORAGE_PROJECTS_KEY = 'pantau_saved_projects_v2';
+const LOCAL_STORAGE_DELETED_PROJECTS_KEY = 'pantau_deleted_project_ids_v2';
 
-export function getStoredCustomProjects(): Project[] {
+export function getDeletedProjectIds(): string[] {
   try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_PROJECTS_KEY);
+    const raw = localStorage.getItem(LOCAL_STORAGE_DELETED_PROJECTS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return parsed;
@@ -265,26 +266,113 @@ export function getStoredCustomProjects(): Project[] {
   return [];
 }
 
+export function markProjectAsDeleted(projectId: string) {
+  try {
+    const current = getDeletedProjectIds();
+    if (!current.includes(projectId)) {
+      const updated = [...current, projectId];
+      localStorage.setItem(LOCAL_STORAGE_DELETED_PROJECTS_KEY, JSON.stringify(updated));
+    }
+    // Remove from saved custom projects in localStorage as well
+    const custom = getStoredCustomProjects().filter((p) => p.id !== projectId);
+    saveStoredCustomProjects(custom);
+  } catch {
+    // ignore
+  }
+}
+
+export function unmarkProjectAsDeleted(projectId: string) {
+  try {
+    const current = getDeletedProjectIds();
+    const updated = current.filter((id) => id !== projectId);
+    localStorage.setItem(LOCAL_STORAGE_DELETED_PROJECTS_KEY, JSON.stringify(updated));
+  } catch {
+    // ignore
+  }
+}
+
+export function getStoredCustomProjects(): Project[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_PROJECTS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const deletedIds = new Set(getDeletedProjectIds());
+        return parsed.filter((p: Project) => !deletedIds.has(p.id));
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
 export function saveStoredCustomProjects(projects: Project[]) {
   try {
-    localStorage.setItem(LOCAL_STORAGE_PROJECTS_KEY, JSON.stringify(projects));
+    const deletedIds = new Set(getDeletedProjectIds());
+    const filtered = projects.filter((p) => !deletedIds.has(p.id));
+    localStorage.setItem(LOCAL_STORAGE_PROJECTS_KEY, JSON.stringify(filtered));
   } catch {
     // ignore
   }
 }
 
 /**
+ * Permanently deletes all reports and records belonging to a project from Supabase cloud database
+ */
+export async function deleteReportsByProjectIdFromSupabase(projectId: string): Promise<{ success: boolean; message: string; deletedCount?: number }> {
+  try {
+    const { data, error } = await supabase
+      .from(SUPABASE_TABLE_NAME)
+      .delete()
+      .eq('project_id', projectId)
+      .select('id');
+
+    if (error) {
+      console.warn('[Supabase] Gagal menghapus laporan dari Supabase:', error.message);
+      return {
+        success: false,
+        message: error.message,
+      };
+    }
+
+    const count = data?.length || 0;
+    return {
+      success: true,
+      message: `Berhasil menghapus ${count} laporan dari database Supabase.`,
+      deletedCount: count,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err?.message || 'Gagal menghapus dari Supabase.',
+    };
+  }
+}
+
+/**
  * Automatically discovers any projects referenced by reports from Supabase / Vercel
  * so that they immediately appear in the Project List and Calendar.
+ * Respects deleted project IDs so deleted projects never get resurrected.
  */
 export function inferProjectsFromReports(reports: DailyReport[], existingProjects: Project[]): Project[] {
+  const deletedIds = new Set(getDeletedProjectIds());
   const projectMap = new Map<string, Project>();
+
+  // Only keep existing projects that are NOT marked as deleted
   existingProjects.forEach((p) => {
-    projectMap.set(p.id, p);
-    registerProjectMeta(p);
+    if (!deletedIds.has(p.id)) {
+      projectMap.set(p.id, p);
+      registerProjectMeta(p);
+    }
   });
 
   for (const report of reports) {
+    // CRITICAL: NEVER resurrect a deleted project
+    if (deletedIds.has(report.projectId)) {
+      continue;
+    }
+
     if (!projectMap.has(report.projectId)) {
       const raw = (report as any).raw_data || {};
       const foundName =
@@ -513,7 +601,10 @@ export async function loadReportsFromSupabase(): Promise<DailyReport[] | null> {
     }
 
     if (!data) return [];
-    return data.map(recordToDailyReport);
+    const deletedIds = new Set(getDeletedProjectIds());
+    return data
+      .map(recordToDailyReport)
+      .filter((r) => !deletedIds.has(r.projectId));
   } catch (err) {
     console.warn('[Supabase] Unexpected error fetching reports:', err);
     return null;

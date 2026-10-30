@@ -25,6 +25,10 @@ import {
   inferProjectsFromReports,
   getStoredCustomProjects,
   saveStoredCustomProjects,
+  getDeletedProjectIds,
+  markProjectAsDeleted,
+  unmarkProjectAsDeleted,
+  deleteReportsByProjectIdFromSupabase,
   subscribeToSupabaseReports,
   registerProjectMeta
 } from './services/supabaseReportService';
@@ -57,25 +61,36 @@ export default function App() {
     return null;
   });
 
-  // Application State - Initialized with initial projects + any custom projects saved in browser
+  // Application State - Initialized with initial projects + custom projects, strictly respecting deleted projects
   const [projects, setProjects] = useState<Project[]>(() => {
-    const stored = getStoredCustomProjects();
+    const deletedIds = new Set(getDeletedProjectIds());
+    const stored = getStoredCustomProjects().filter((p) => !deletedIds.has(p.id));
     const map = new Map<string, Project>();
+
     INITIAL_PROJECTS.forEach((p) => {
-      map.set(p.id, p);
-      registerProjectMeta(p);
+      if (!deletedIds.has(p.id)) {
+        map.set(p.id, p);
+        registerProjectMeta(p);
+      }
     });
+
     stored.forEach((p) => {
-      map.set(p.id, p);
-      registerProjectMeta(p);
+      if (!deletedIds.has(p.id)) {
+        map.set(p.id, p);
+        registerProjectMeta(p);
+      }
     });
+
     return Array.from(map.values());
   });
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const currentRole: UserRole = authSession?.role || 'contractor';
   const [activeTab, setActiveTab] = useState<'calendar' | 'daily'>('calendar');
 
-  const [dailyReports, setDailyReports] = useState<DailyReport[]>(INITIAL_DAILY_REPORTS);
+  const [dailyReports, setDailyReports] = useState<DailyReport[]>(() => {
+    const deletedIds = new Set(getDeletedProjectIds());
+    return INITIAL_DAILY_REPORTS.filter((r) => !deletedIds.has(r.projectId));
+  });
   const [escalationLog, setEscalationLog] = useState<EscalationAlert[]>(INITIAL_ESCALATION_ALERTS);
 
   // Active daily report being edited / viewed
@@ -94,21 +109,24 @@ export default function App() {
     try {
       const remoteReports = await loadReportsFromSupabase();
       if (remoteReports && remoteReports.length > 0) {
+        const deletedIds = new Set(getDeletedProjectIds());
+        const validReports = remoteReports.filter((r) => !deletedIds.has(r.projectId));
+
         setDailyReports((prev) => {
           const map = new Map<string, DailyReport>();
-          prev.forEach((r) => map.set(r.id, r));
-          remoteReports.forEach((r) => map.set(r.id, r));
+          prev.filter((r) => !deletedIds.has(r.projectId)).forEach((r) => map.set(r.id, r));
+          validReports.forEach((r) => map.set(r.id, r));
           return Array.from(map.values());
         });
 
-        // Automatically infer and discover any projects from remote reports
+        // Automatically infer and discover any projects from remote reports (excluding deleted ones)
         setProjects((prev) => {
-          const updated = inferProjectsFromReports(remoteReports, prev);
+          const updated = inferProjectsFromReports(validReports, prev.filter((p) => !deletedIds.has(p.id)));
           return updated;
         });
 
         if (!silent) {
-          setSupabaseNotification(`✓ Berhasil menyinkronkan data dari Cloud/Vercel (${remoteReports.length} laporan)`);
+          setSupabaseNotification(`✓ Berhasil menyinkronkan data dari Cloud/Vercel (${validReports.length} laporan)`);
           setTimeout(() => setSupabaseNotification(''), 4000);
         }
       }
@@ -237,6 +255,7 @@ export default function App() {
 
   // Handler: Add project (persist to memory, localStorage, and metadata)
   const handleAddProject = (newProj: Project) => {
+    unmarkProjectAsDeleted(newProj.id);
     registerProjectMeta(newProj);
     setProjects((prev) => {
       const next = [...prev, newProj];
@@ -267,20 +286,42 @@ export default function App() {
     }
   };
 
-  // Handler: Delete project (strictly PMO only)
-  const handleDeleteProject = (projectId: string) => {
+  // Handler: Delete project (strictly PMO only - permanent across refresh and Cloud sync)
+  const handleDeleteProject = async (projectId: string) => {
+    // 1. Permanently blacklist in localStorage so reload/refresh never reloads it
+    markProjectAsDeleted(projectId);
+
+    // 2. Remove immediately from React projects state and saved storage
     setProjects((prev) => {
       const next = prev.filter((p) => p.id !== projectId);
       saveStoredCustomProjects(next);
       return next;
     });
+
+    // 3. Remove all reports for this project from local React state
     setDailyReports((prev) => prev.filter((r) => r.projectId !== projectId));
+
+    // 4. Deselect if currently open
     if (selectedProject?.id === projectId) {
       setSelectedProject(null);
       setSelectedReportDate(null);
     }
-    setSupabaseNotification('✓ Proyek berhasil dihapus.');
-    setTimeout(() => setSupabaseNotification(''), 3000);
+
+    setSupabaseNotification('⏳ Menghapus proyek dan membersihkan database Cloud/Supabase...');
+
+    // 5. CRITICAL: Delete from Supabase cloud database so cloud sync/Vercel never resurrects it
+    try {
+      const res = await deleteReportsByProjectIdFromSupabase(projectId);
+      if (res.success) {
+        setSupabaseNotification(`✓ Proyek berhasil dihapus permanen dari sistem & Cloud (${res.deletedCount || 0} laporan dihapus).`);
+      } else {
+        setSupabaseNotification('✓ Proyek berhasil dihapus permanen dari sistem.');
+      }
+    } catch {
+      setSupabaseNotification('✓ Proyek berhasil dihapus permanen dari sistem.');
+    }
+
+    setTimeout(() => setSupabaseNotification(''), 4000);
   };
 
   // Current active report for Daily Report Form
