@@ -7,48 +7,6 @@ import {
 
 export const INITIAL_PROJECTS: Project[] = [
   {
-    id: 'proj-0',
-    name: 'Pemasangan pipa transmisi Air Baku unit Prasedimentasi',
-    code: 'AAA/CONS/FM-014',
-    contractorName: 'PT Mandiri',
-    pmoLead: 'Aubrey F., M.T. (PT AubreyKeylaRapli)',
-    location: 'Unit Prasedimentasi - Saluran Transmisi Air Baku',
-    coordinates: '-6.2382° S, 107.0124° E',
-    startDate: '2025-07-14',
-    targetDate: '2026-12-31',
-    status: 'Active',
-    description: 'Pemasangan pipa transmisi air baku pipa HDPE OD 630mm unit prasedimentasi sesuai standar form AAA/CONS/FM-014 Rev01.',
-    targetSubmissionHour: 9, // 09:00 AM H+1 cutoff
-  },
-  {
-    id: 'proj-1',
-    name: 'Metro Elevated Viaduct Section 2A',
-    code: 'MRT-V2A-01',
-    contractorName: 'PT Jaya Konstruksi - Obayashi JV',
-    pmoLead: 'Engr. Bambang Wicaksono, PMP',
-    location: 'Central Corridor, Station 14+200 to 18+600',
-    coordinates: '-6.2088° S, 106.8456° E',
-    startDate: '2026-01-15',
-    targetDate: '2027-08-30',
-    status: 'Active',
-    description: '14.2 km elevated double-track guideway, pier construction, segmental box girder erection.',
-    targetSubmissionHour: 9, // 09:00 AM H+1 cutoff
-  },
-  {
-    id: 'proj-2',
-    name: 'Harbor Logistics Hub - Phase 3 Wharf Expansion',
-    code: 'HLH-P3-WHARF',
-    contractorName: 'Adhi Karya - McConnell Dowell Consortium',
-    pmoLead: 'Dr. Sarah Alatas, PE',
-    location: 'Port Basin Area 4, Berth 12-15',
-    coordinates: '-6.1042° S, 106.8821° E',
-    startDate: '2025-01-10',
-    targetDate: '2026-08-30',
-    status: 'Completed',
-    description: 'Deepwater container berth extension, precast driven piles, and heavy-duty apron pavement. Pekerjaan fisik telah selesai 100% dan memasuki masa pemeliharaan (FHO).',
-    targetSubmissionHour: 9,
-  },
-  {
     id: 'proj-1793091923901',
     name: 'Renewal Tube Settler',
     code: 'RTS-01',

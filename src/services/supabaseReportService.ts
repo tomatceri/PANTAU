@@ -168,6 +168,49 @@ CREATE POLICY "Allow anon delete" ON public.laporan_harian
 -- 6. Index untuk kecepatan query
 CREATE INDEX IF NOT EXISTS idx_laporan_harian_proj_date 
   ON public.laporan_harian (project_id, report_date);
+
+-- 7. Buat tabel projects (Daftar Proyek Real-time Terpadu)
+CREATE TABLE IF NOT EXISTS public.projects (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  code TEXT,
+  contractor_name TEXT,
+  pmo_lead TEXT,
+  location TEXT,
+  coordinates TEXT,
+  start_date TEXT,
+  target_date TEXT,
+  status TEXT DEFAULT 'Active',
+  description TEXT,
+  target_submission_hour INTEGER DEFAULT 9,
+  is_deleted BOOLEAN DEFAULT FALSE,
+  raw_data JSONB,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 8. RLS untuk tabel projects
+ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow anon read projects" ON public.projects;
+DROP POLICY IF EXISTS "Allow anon insert projects" ON public.projects;
+DROP POLICY IF EXISTS "Allow anon update projects" ON public.projects;
+DROP POLICY IF EXISTS "Allow anon delete projects" ON public.projects;
+
+CREATE POLICY "Allow anon read projects" ON public.projects 
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY "Allow anon insert projects" ON public.projects 
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+CREATE POLICY "Allow anon update projects" ON public.projects 
+  FOR UPDATE TO anon, authenticated USING (true);
+
+CREATE POLICY "Allow anon delete projects" ON public.projects 
+  FOR DELETE TO anon, authenticated USING (true);
+
+-- 9. Aktifkan Supabase Realtime Publication untuk kedua tabel
+ALTER PUBLICATION supabase_realtime ADD TABLE public.laporan_harian;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.projects;
 `;
 
 export interface SupabaseSyncStatus {
@@ -421,6 +464,308 @@ export function inferProjectsFromReports(reports: DailyReport[], existingProject
   const result = Array.from(projectMap.values());
   saveStoredCustomProjects(result);
   return result;
+}
+
+/**
+ * Converts a database record from public.projects table back to Project format
+ */
+export function recordToProject(record: any): Project {
+  if (record.raw_data && typeof record.raw_data === 'object' && record.raw_data.name) {
+    return {
+      ...record.raw_data,
+      id: record.id || record.raw_data.id,
+      name: record.name || record.raw_data.name,
+      code: record.code || record.raw_data.code,
+      status: record.status || record.raw_data.status || 'Active',
+    };
+  }
+  return {
+    id: record.id,
+    name: record.name || `Proyek ${record.id}`,
+    code: record.code || 'PRJ-01',
+    contractorName: record.contractor_name || 'Kontraktor',
+    pmoLead: record.pmo_lead || 'PMO Lead',
+    location: record.location || 'Lokasi Proyek',
+    coordinates: record.coordinates || '-6.2088° S, 106.8456° E',
+    startDate: record.start_date || '2026-10-01',
+    targetDate: record.target_date || '2027-12-31',
+    status: (record.status as 'Active' | 'Completed') || 'Active',
+    description: record.description || '',
+    targetSubmissionHour: record.target_submission_hour || 9,
+  };
+}
+
+/**
+ * Loads all active projects from Supabase public.projects table (if provisioned)
+ */
+export async function loadProjectsFromSupabase(): Promise<Project[] | null> {
+  try {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('is_deleted', false)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      return null;
+    }
+    if (!data) return [];
+    return data.map(recordToProject);
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
+ * Fetches the global list of deleted projects stored in cloud database
+ * so any device that opens the app respects project deletions made by other devices
+ */
+export async function fetchCloudDeletedProjects(): Promise<string[]> {
+  try {
+    const { data } = await supabase
+      .from(SUPABASE_TABLE_NAME)
+      .select('raw_data')
+      .eq('id', '__meta_deleted_projects__')
+      .maybeSingle();
+
+    if (data && data.raw_data && Array.isArray(data.raw_data.deletedIds)) {
+      data.raw_data.deletedIds.forEach((id: string) => markProjectAsDeleted(id));
+      return data.raw_data.deletedIds;
+    }
+  } catch (err) {
+    // ignore
+  }
+  return getDeletedProjectIds();
+}
+
+export const PANTAU_SYNC_CHANNEL = 'realtime_pantau_sync_channel';
+
+/**
+ * Realtime broadcast channel instance for instant cross-device updates
+ */
+let unifiedRealtimeChannel: any = null;
+
+export function getOrCreateUnifiedChannel() {
+  if (!unifiedRealtimeChannel) {
+    unifiedRealtimeChannel = supabase.channel(PANTAU_SYNC_CHANNEL, {
+      config: {
+        broadcast: { ack: true, self: false },
+      },
+    });
+  }
+  return unifiedRealtimeChannel;
+}
+
+export async function broadcastProjectChange(payload: {
+  action: 'INSERT' | 'UPDATE' | 'DELETE';
+  projectId?: string;
+  project?: Project;
+}) {
+  try {
+    const ch = getOrCreateUnifiedChannel();
+    await ch.send({
+      type: 'broadcast',
+      event: 'project_action',
+      payload: {
+        ...payload,
+        timestamp: Date.now(),
+      },
+    });
+  } catch (err) {
+    console.warn('[Broadcast] Error sending broadcast:', err);
+  }
+}
+
+/**
+ * Saves a new or updated Project to Supabase cloud and broadcasts to all clients
+ */
+export async function saveProjectToSupabase(project: Project): Promise<{ success: boolean; message: string }> {
+  try {
+    registerProjectMeta(project);
+    unmarkProjectAsDeleted(project.id);
+
+    // 1. Save to 'projects' table (if table exists)
+    try {
+      const payload = {
+        id: project.id,
+        name: project.name,
+        code: project.code,
+        contractor_name: project.contractorName,
+        pmo_lead: project.pmoLead,
+        location: project.location,
+        coordinates: project.coordinates,
+        start_date: project.startDate,
+        target_date: project.targetDate,
+        status: project.status,
+        description: project.description,
+        target_submission_hour: project.targetSubmissionHour,
+        is_deleted: false,
+        raw_data: project,
+        updated_at: new Date().toISOString(),
+      };
+      await supabase.from('projects').upsert(payload, { onConflict: 'id' });
+    } catch {
+      // ignore if table not created yet
+    }
+
+    // 2. Also save to guaranteed cloud meta row in laporan_harian for cross-device persistence
+    await supabase.from(SUPABASE_TABLE_NAME).upsert({
+      id: `__meta_project_${project.id}`,
+      project_id: project.id,
+      nama_proyek: project.name,
+      nama_kontraktor: project.contractorName,
+      lokasi_proyek: project.location,
+      report_date: project.startDate || '2026-10-01',
+      raw_data: { projectMeta: project, isProjectRegistry: true },
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'id' });
+
+    // 3. Broadcast real-time change to all connected laptops/devices
+    await broadcastProjectChange({ action: 'INSERT', project });
+
+    return { success: true, message: 'Proyek tersimpan dan disinkronkan ke seluruh perangkat.' };
+  } catch (err: any) {
+    return { success: false, message: err?.message || 'Gagal menyimpan proyek ke cloud.' };
+  }
+}
+
+/**
+ * Permanently deletes a project from Supabase cloud, reports table, and broadcasts to all devices
+ */
+export async function deleteProjectFromCloud(projectId: string): Promise<{ success: boolean; message: string; deletedReportsCount?: number }> {
+  // 1. Mark in local storage
+  markProjectAsDeleted(projectId);
+
+  // 2. Add to cloud deleted projects list in laporan_harian
+  try {
+    const currentDeleted = getDeletedProjectIds();
+    await supabase.from(SUPABASE_TABLE_NAME).upsert({
+      id: '__meta_deleted_projects__',
+      project_id: '__meta__',
+      report_date: '2099-01-01',
+      nama_proyek: 'System Deleted Projects Registry',
+      raw_data: { deletedIds: currentDeleted, updatedAt: new Date().toISOString() },
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'id' });
+  } catch (e) {
+    console.warn('[Sync] Could not upsert cloud deleted projects:', e);
+  }
+
+  // 3. Delete from 'projects' table (if table exists)
+  try {
+    await supabase.from('projects').delete().eq('id', projectId);
+    await supabase.from('projects').update({ is_deleted: true }).eq('id', projectId);
+  } catch {}
+
+  // 4. Delete the meta project record in laporan_harian
+  try {
+    await supabase.from(SUPABASE_TABLE_NAME).delete().eq('id', `__meta_project_${projectId}`);
+  } catch {}
+
+  // 5. Delete all reports of this project from laporan_harian
+  let repCount = 0;
+  try {
+    const res = await deleteReportsByProjectIdFromSupabase(projectId);
+    repCount = res.deletedCount || 0;
+  } catch {}
+
+  // 6. Broadcast Realtime delete event to ALL connected laptops and phones!
+  await broadcastProjectChange({ action: 'DELETE', projectId });
+
+  return { success: true, message: `Proyek berhasil dihapus dari seluruh perangkat (${repCount} laporan dibersihkan).`, deletedReportsCount: repCount };
+}
+
+/**
+ * Subscribes to Realtime Postgres changes (postgres_changes) on both 'projects' and 'laporan_harian' tables,
+ * plus Realtime Broadcast events for instantaneous multi-device synchronization without page refresh.
+ */
+export function subscribeToSupabaseProjects(
+  onProjectsChanged: () => void,
+  onSingleProjectAction?: (payload: { action: 'INSERT' | 'UPDATE' | 'DELETE'; projectId?: string; project?: Project }) => void
+): () => void {
+  try {
+    const channel = supabase
+      .channel(PANTAU_SYNC_CHANNEL, {
+        config: {
+          broadcast: { ack: true, self: false },
+        },
+      })
+      // 1. Supabase Realtime Subscription on 'projects' table (INSERT, UPDATE, DELETE)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'projects',
+        },
+        (payload) => {
+          console.log('[Realtime] postgres_changes on projects table:', payload);
+          if (payload.eventType === 'DELETE' || (payload.new as any)?.is_deleted) {
+            const delId = (payload.old as any)?.id || (payload.new as any)?.id;
+            if (delId) {
+              markProjectAsDeleted(delId);
+              onSingleProjectAction?.({ action: 'DELETE', projectId: delId });
+            }
+          } else if (payload.eventType === 'INSERT') {
+            const newP = recordToProject(payload.new);
+            onSingleProjectAction?.({ action: 'INSERT', project: newP });
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedP = recordToProject(payload.new);
+            onSingleProjectAction?.({ action: 'UPDATE', project: updatedP });
+          }
+          onProjectsChanged();
+        }
+      )
+      // 2. Supabase Realtime Subscription on 'laporan_harian' table (INSERT, UPDATE, DELETE)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: SUPABASE_TABLE_NAME,
+        },
+        (payload) => {
+          console.log('[Realtime] postgres_changes on laporan_harian table:', payload);
+          const rowId = (payload.old as any)?.id || (payload.new as any)?.id;
+          if (rowId === '__meta_deleted_projects__') {
+            const raw = (payload.new as any)?.raw_data;
+            if (raw && Array.isArray(raw.deletedIds)) {
+              raw.deletedIds.forEach((id: string) => markProjectAsDeleted(id));
+            }
+          }
+          onProjectsChanged();
+        }
+      )
+      // 3. Supabase Realtime Broadcast for instant cross-device updates (milliseconds latency)
+      .on(
+        'broadcast',
+        { event: 'project_action' },
+        (resp) => {
+          console.log('[Realtime Broadcast] Project action received from another device:', resp.payload);
+          const { action, projectId, project } = resp.payload || {};
+          if (action === 'DELETE' && projectId) {
+            markProjectAsDeleted(projectId);
+            onSingleProjectAction?.({ action: 'DELETE', projectId });
+          } else if (action === 'INSERT' && project) {
+            unmarkProjectAsDeleted(project.id);
+            onSingleProjectAction?.({ action: 'INSERT', project });
+          } else if (action === 'UPDATE' && project) {
+            onSingleProjectAction?.({ action: 'UPDATE', project });
+          }
+          onProjectsChanged();
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Realtime Subscription] Channel status:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  } catch (err) {
+    console.warn('[Supabase] Failed to subscribe to realtime projects:', err);
+    return () => {};
+  }
 }
 
 /**

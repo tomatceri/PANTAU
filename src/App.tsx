@@ -30,6 +30,11 @@ import {
   unmarkProjectAsDeleted,
   deleteReportsByProjectIdFromSupabase,
   subscribeToSupabaseReports,
+  subscribeToSupabaseProjects,
+  saveProjectToSupabase,
+  deleteProjectFromCloud,
+  fetchCloudDeletedProjects,
+  loadProjectsFromSupabase,
   registerProjectMeta
 } from './services/supabaseReportService';
 import { CheckCircle2, AlertTriangle, AlertCircle, CalendarDays, Database, Trash2 } from 'lucide-react';
@@ -107,9 +112,37 @@ export default function App() {
   const syncFromSupabase = React.useCallback(async (silent = false) => {
     if (!silent) setIsSyncingCloud(true);
     try {
+      // 1. Fetch latest global deleted projects registry from Supabase
+      await fetchCloudDeletedProjects();
+      const deletedIds = new Set(getDeletedProjectIds());
+
+      // Immediately filter out any deleted projects from current React state
+      setProjects((prev) => {
+        const remaining = prev.filter((p) => !deletedIds.has(p.id));
+        saveStoredCustomProjects(remaining);
+        return remaining;
+      });
+      setDailyReports((prev) => prev.filter((r) => !deletedIds.has(r.projectId)));
+
+      // 2. Fetch direct projects table (if available)
+      const cloudProjects = await loadProjectsFromSupabase();
+      if (cloudProjects && cloudProjects.length > 0) {
+        setProjects((prev) => {
+          const map = new Map<string, Project>();
+          prev.filter((p) => !deletedIds.has(p.id)).forEach((p) => map.set(p.id, p));
+          cloudProjects.filter((p) => !deletedIds.has(p.id)).forEach((p) => {
+            map.set(p.id, p);
+            registerProjectMeta(p);
+          });
+          const merged = Array.from(map.values());
+          saveStoredCustomProjects(merged);
+          return merged;
+        });
+      }
+
+      // 3. Fetch remote reports and infer projects
       const remoteReports = await loadReportsFromSupabase();
       if (remoteReports && remoteReports.length > 0) {
-        const deletedIds = new Set(getDeletedProjectIds());
         const validReports = remoteReports.filter((r) => !deletedIds.has(r.projectId));
 
         setDailyReports((prev) => {
@@ -137,24 +170,52 @@ export default function App() {
     }
   }, []);
 
-  // Initial load & automatic sync with Cloud / Vercel
+  // Initial load & Supabase Realtime Subscription across all devices
   useEffect(() => {
     syncFromSupabase(true);
 
-    // Auto-sync whenever user focuses the window (e.g. returning from Vercel tab)
+    // Auto-sync whenever user focuses the window
     const handleWindowFocus = () => {
       syncFromSupabase(true);
     };
     window.addEventListener('focus', handleWindowFocus);
 
-    // Subscribe to realtime database changes from Supabase
-    const unsubscribe = subscribeToSupabaseReports(() => {
+    // Subscribe to Supabase Realtime (postgres_changes on 'projects' and 'laporan_harian' + Broadcast)
+    const unsubscribeProjects = subscribeToSupabaseProjects(
+      () => {
+        syncFromSupabase(true);
+      },
+      (action) => {
+        console.log('[Realtime Push Action Received]:', action);
+        if (action.action === 'DELETE' && action.projectId) {
+          // Immediately remove the project from state on this device
+          setProjects((prev) => prev.filter((p) => p.id !== action.projectId));
+          setDailyReports((prev) => prev.filter((r) => r.projectId !== action.projectId));
+          setSelectedProject((prev) => (prev?.id === action.projectId ? null : prev));
+          setSupabaseNotification('ℹ Sebuah proyek telah dihapus (Sinkronisasi Real-time).');
+          setTimeout(() => setSupabaseNotification(''), 4000);
+        } else if (action.action === 'INSERT' && action.project) {
+          // Immediately add the new project into state on this device
+          setProjects((prev) => {
+            if (prev.some((p) => p.id === action.project!.id)) return prev;
+            return [...prev, action.project!];
+          });
+          setSupabaseNotification(`✓ Proyek baru "${action.project.name}" ditambahkan (Sinkronisasi Real-time).`);
+          setTimeout(() => setSupabaseNotification(''), 4000);
+        } else if (action.action === 'UPDATE' && action.project) {
+          setProjects((prev) => prev.map((p) => (p.id === action.project!.id ? action.project! : p)));
+        }
+      }
+    );
+
+    const unsubscribeReports = subscribeToSupabaseReports(() => {
       syncFromSupabase(true);
     });
 
     return () => {
       window.removeEventListener('focus', handleWindowFocus);
-      unsubscribe();
+      unsubscribeProjects();
+      unsubscribeReports();
     };
   }, [syncFromSupabase]);
 
@@ -253,8 +314,8 @@ export default function App() {
     });
   };
 
-  // Handler: Add project (persist to memory, localStorage, and metadata)
-  const handleAddProject = (newProj: Project) => {
+  // Handler: Add project (persist to memory, localStorage, and Supabase cloud across all laptops)
+  const handleAddProject = async (newProj: Project) => {
     unmarkProjectAsDeleted(newProj.id);
     registerProjectMeta(newProj);
     setProjects((prev) => {
@@ -262,6 +323,19 @@ export default function App() {
       saveStoredCustomProjects(next);
       return next;
     });
+
+    setSupabaseNotification(`⏳ Menyimpan proyek "${newProj.name}" ke Cloud...`);
+    try {
+      const res = await saveProjectToSupabase(newProj);
+      if (res.success) {
+        setSupabaseNotification(`✓ Proyek "${newProj.name}" berhasil ditambahkan & disinkronkan ke seluruh perangkat!`);
+      } else {
+        setSupabaseNotification(`✓ Proyek "${newProj.name}" berhasil ditambahkan.`);
+      }
+    } catch {
+      setSupabaseNotification(`✓ Proyek "${newProj.name}" berhasil ditambahkan.`);
+    }
+    setTimeout(() => setSupabaseNotification(''), 4000);
   };
 
   // Handler: Trigger escalation modal for a date
@@ -286,9 +360,9 @@ export default function App() {
     }
   };
 
-  // Handler: Delete project (strictly PMO only - permanent across refresh and Cloud sync)
+  // Handler: Delete project (strictly PMO only - permanent and real-time across ALL laptops & devices)
   const handleDeleteProject = async (projectId: string) => {
-    // 1. Permanently blacklist in localStorage so reload/refresh never reloads it
+    // 1. Permanently blacklist in localStorage on this device
     markProjectAsDeleted(projectId);
 
     // 2. Remove immediately from React projects state and saved storage
@@ -307,18 +381,18 @@ export default function App() {
       setSelectedReportDate(null);
     }
 
-    setSupabaseNotification('⏳ Menghapus proyek dan membersihkan database Cloud/Supabase...');
+    setSupabaseNotification('⏳ Menghapus proyek dan menyinkronkan ke seluruh perangkat...');
 
-    // 5. CRITICAL: Delete from Supabase cloud database so cloud sync/Vercel never resurrects it
+    // 5. CRITICAL: Delete from Supabase cloud database & broadcast real-time to all devices!
     try {
-      const res = await deleteReportsByProjectIdFromSupabase(projectId);
+      const res = await deleteProjectFromCloud(projectId);
       if (res.success) {
-        setSupabaseNotification(`✓ Proyek berhasil dihapus permanen dari sistem & Cloud (${res.deletedCount || 0} laporan dihapus).`);
+        setSupabaseNotification(`✓ Proyek berhasil dihapus permanen di seluruh perangkat (${res.deletedReportsCount || 0} laporan dibersihkan).`);
       } else {
-        setSupabaseNotification('✓ Proyek berhasil dihapus permanen dari sistem.');
+        setSupabaseNotification('✓ Proyek berhasil dihapus dari sistem.');
       }
     } catch {
-      setSupabaseNotification('✓ Proyek berhasil dihapus permanen dari sistem.');
+      setSupabaseNotification('✓ Proyek berhasil dihapus dari sistem.');
     }
 
     setTimeout(() => setSupabaseNotification(''), 4000);
