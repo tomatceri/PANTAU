@@ -380,7 +380,7 @@ export default function App() {
       )}
 
       {/* Main Viewport */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-3.5 sm:py-6 space-y-4 sm:space-y-6">
         {/* VIEW 1: PROJECT SELECTION (If no project selected) */}
         {!selectedProject ? (
           <ProjectList
