@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { UserRole } from '../types';
+import { UserRole, ContractorAccount } from '../types';
 import { PantauLogoMark } from './PantauLogo';
 import { Lock, User, Eye, EyeOff, ArrowRight, AlertCircle, ShieldCheck, HardHat } from 'lucide-react';
 
 interface LoginPageProps {
+  contractorAccounts?: ContractorAccount[];
   onLoginSuccess: (role: UserRole, username: string) => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ contractorAccounts = [], onLoginSuccess }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -20,17 +21,32 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     const normalizedUser = username.trim().toLowerCase();
     const cleanPass = password.trim();
 
-    if (normalizedUser === '@kontraktor' && cleanPass === '1234') {
-      onLoginSuccess('contractor', '@kontraktor');
-      return;
-    }
-
     if (normalizedUser === '@pmo' && cleanPass === '5678') {
       onLoginSuccess('pmo', '@pmo');
       return;
     }
 
-    setError('Username atau password salah. Gunakan akun resmi @kontraktor atau @pmo sesuai otorisasi Anda.');
+    if (normalizedUser === '@kontraktor' && cleanPass === '1234') {
+      onLoginSuccess('contractor', '@kontraktor');
+      return;
+    }
+
+    // Check dynamic contractor accounts created by PMO
+    const matchedAccount = contractorAccounts.find((acc) => {
+      const accUser = acc.username.trim().toLowerCase();
+      return (
+        accUser === normalizedUser ||
+        accUser === `@${normalizedUser}` ||
+        `@${accUser}` === normalizedUser
+      ) && acc.password === cleanPass;
+    });
+
+    if (matchedAccount) {
+      onLoginSuccess('contractor', matchedAccount.username);
+      return;
+    }
+
+    setError('Username atau password salah. Pastikan username dan password yang diberikan oleh PMO sudah benar (contoh: @kontraktor atau akun kontraktor yang telah dibuat).');
   };
 
   return (

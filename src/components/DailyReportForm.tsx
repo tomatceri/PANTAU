@@ -1384,7 +1384,11 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
         )}
 
         {/* 1:1 OFFICIAL DOCUMENT RENDER */}
-        <OfficialDailyReportView report={formData} project={project} />
+        <div className="w-full overflow-x-auto pb-6">
+          <div className="min-w-fit flex justify-center">
+            <OfficialDailyReportView report={formData} project={project} />
+          </div>
+        </div>
 
         {/* PMO Approve Dialog */}
         {showPmoApproveModal && (
@@ -1551,7 +1555,11 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
 
       {/* RENDER VIEW: PREVIEW 1:1 OR FORM INPUT */}
       {activeTab === 'preview' ? (
-        <OfficialDailyReportView report={formData} project={project} />
+        <div className="w-full overflow-x-auto pb-6">
+          <div className="min-w-fit flex justify-center">
+            <OfficialDailyReportView report={formData} project={project} />
+          </div>
+        </div>
       ) : (
         <div className="space-y-6">
           {/* Contractor Navigation Sections */}

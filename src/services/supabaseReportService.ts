@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { DailyReport, Project } from '../types';
+import { DailyReport, Project, ContractorAccount } from '../types';
 
 export const SUPABASE_TABLE_NAME = 'laporan_harian';
 
@@ -360,6 +360,88 @@ export function saveStoredCustomProjects(projects: Project[]) {
   }
 }
 
+const LOCAL_STORAGE_CONTRACTOR_ACCOUNTS_KEY = 'pantau_contractor_accounts_v1';
+
+export const DEFAULT_CONTRACTOR_ACCOUNTS: ContractorAccount[] = [
+  {
+    id: 'acc-default-kontraktor',
+    username: '@kontraktor',
+    password: '1234',
+    companyName: 'PT. BESTINDO PUTRA MANDIRI',
+    contactPerson: 'Supervisor Lapangan',
+    phone: '081234567890',
+    assignedProjectIds: ['proj-1793091923901'],
+    createdAt: '2026-10-01T00:00:00.000Z',
+  },
+];
+
+export function getStoredContractorAccounts(): ContractorAccount[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_CONTRACTOR_ACCOUNTS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {
+    // ignore
+  }
+  return DEFAULT_CONTRACTOR_ACCOUNTS;
+}
+
+export function saveStoredContractorAccounts(accounts: ContractorAccount[]) {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_CONTRACTOR_ACCOUNTS_KEY, JSON.stringify(accounts));
+  } catch {
+    // ignore
+  }
+}
+
+export async function loadContractorAccountsFromSupabase(): Promise<ContractorAccount[] | null> {
+  try {
+    const { data } = await supabase
+      .from(SUPABASE_TABLE_NAME)
+      .select('raw_data')
+      .eq('id', '__meta_contractor_accounts__')
+      .maybeSingle();
+
+    if (data && data.raw_data && Array.isArray(data.raw_data.accounts)) {
+      saveStoredContractorAccounts(data.raw_data.accounts);
+      return data.raw_data.accounts;
+    }
+  } catch (err) {
+    console.warn('[Supabase] Failed to load contractor accounts:', err);
+  }
+  return null;
+}
+
+export async function saveContractorAccountsToSupabase(accounts: ContractorAccount[]): Promise<{ success: boolean; message: string }> {
+  try {
+    saveStoredContractorAccounts(accounts);
+    await supabase.from(SUPABASE_TABLE_NAME).upsert({
+      id: '__meta_contractor_accounts__',
+      project_id: '__meta__',
+      report_date: '2099-12-31',
+      nama_proyek: 'Contractor Accounts Registry',
+      raw_data: { accounts, updatedAt: new Date().toISOString() },
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'id' });
+
+    // Broadcast change to all devices
+    try {
+      const ch = getOrCreateUnifiedChannel();
+      await ch.send({
+        type: 'broadcast',
+        event: 'contractor_accounts_action',
+        payload: { accounts, timestamp: Date.now() },
+      });
+    } catch {}
+
+    return { success: true, message: 'Daftar akun kontraktor berhasil disimpan & disinkronkan!' };
+  } catch (err: any) {
+    return { success: false, message: err?.message || 'Gagal menyimpan akun kontraktor ke cloud.' };
+  }
+}
+
 /**
  * Permanently deletes all reports and records belonging to a project from Supabase cloud database
  */
@@ -477,6 +559,8 @@ export function recordToProject(record: any): Project {
       name: record.name || record.raw_data.name,
       code: record.code || record.raw_data.code,
       status: record.status || record.raw_data.status || 'Active',
+      logoUrl: record.raw_data.logoUrl || record.logo_url,
+      assignedContractorUsernames: record.raw_data.assignedContractorUsernames || record.assigned_contractor_usernames,
     };
   }
   return {
@@ -492,6 +576,8 @@ export function recordToProject(record: any): Project {
     status: (record.status as 'Active' | 'Completed') || 'Active',
     description: record.description || '',
     targetSubmissionHour: record.target_submission_hour || 9,
+    logoUrl: record.logo_url || record.logoUrl,
+    assignedContractorUsernames: record.assigned_contractor_usernames || record.assignedContractorUsernames,
   };
 }
 
@@ -681,7 +767,8 @@ export async function deleteProjectFromCloud(projectId: string): Promise<{ succe
  */
 export function subscribeToSupabaseProjects(
   onProjectsChanged: () => void,
-  onSingleProjectAction?: (payload: { action: 'INSERT' | 'UPDATE' | 'DELETE'; projectId?: string; project?: Project }) => void
+  onSingleProjectAction?: (payload: { action: 'INSERT' | 'UPDATE' | 'DELETE'; projectId?: string; project?: Project }) => void,
+  onContractorAccountsChanged?: (accounts: ContractorAccount[]) => void
 ): () => void {
   try {
     const channel = supabase
@@ -732,6 +819,12 @@ export function subscribeToSupabaseProjects(
             if (raw && Array.isArray(raw.deletedIds)) {
               raw.deletedIds.forEach((id: string) => markProjectAsDeleted(id));
             }
+          } else if (rowId === '__meta_contractor_accounts__') {
+            const raw = (payload.new as any)?.raw_data;
+            if (raw && Array.isArray(raw.accounts)) {
+              saveStoredContractorAccounts(raw.accounts);
+              onContractorAccountsChanged?.(raw.accounts);
+            }
           }
           onProjectsChanged();
         }
@@ -753,6 +846,18 @@ export function subscribeToSupabaseProjects(
             onSingleProjectAction?.({ action: 'UPDATE', project });
           }
           onProjectsChanged();
+        }
+      )
+      .on(
+        'broadcast',
+        { event: 'contractor_accounts_action' },
+        (resp) => {
+          console.log('[Realtime Broadcast] Contractor accounts action received:', resp.payload);
+          const accounts = resp.payload?.accounts;
+          if (Array.isArray(accounts)) {
+            saveStoredContractorAccounts(accounts);
+            onContractorAccountsChanged?.(accounts);
+          }
         }
       )
       .subscribe((status) => {

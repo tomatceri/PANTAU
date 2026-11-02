@@ -82,11 +82,61 @@ async function preloadPhotoForPdf(url: string, caption: string): Promise<Preload
   });
 }
 
+async function preloadLogoForPdf(url: string): Promise<{ dataUrl: string; format: 'JPEG' | 'PNG'; width: number; height: number } | null> {
+  if (!url) return null;
+  return new Promise((resolve) => {
+    const img = new Image();
+    if (!url.startsWith('data:')) {
+      img.crossOrigin = 'anonymous';
+    }
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || 200;
+        canvas.height = img.naturalHeight || 80;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          const isPng = url.startsWith('data:image/png') || url.includes('.png');
+          const dataUrl = canvas.toDataURL(isPng ? 'image/png' : 'image/jpeg', 0.95);
+          resolve({
+            dataUrl,
+            format: isPng ? 'PNG' : 'JPEG',
+            width: canvas.width,
+            height: canvas.height,
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn('Logo canvas fallback:', err);
+      }
+      resolve({
+        dataUrl: url,
+        format: url.startsWith('data:image/png') ? 'PNG' : 'JPEG',
+        width: 200,
+        height: 80,
+      });
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
 /**
  * Generates an official standardized printable PDF for a Daily Report matching form AAA/CONS/FM-014 Rev01
  * Now directly embeds clean site photos without watermarks or GPS text overlays.
  */
 export async function exportDailyReportPdf(report: DailyReport, project: Project): Promise<void> {
+  // Preload project logo if provided
+  let preloadedLogo: { dataUrl: string; format: 'JPEG' | 'PNG'; width: number; height: number } | null = null;
+  if (project.logoUrl) {
+    try {
+      preloadedLogo = await preloadLogoForPdf(project.logoUrl);
+    } catch (e) {
+      console.warn('Failed to preload logo:', e);
+    }
+  }
+
   // Preload all attached site photos
   const loadedPhotos: PreloadedPdfPhoto[] = [];
   if (report.photos && report.photos.length > 0) {
@@ -136,6 +186,26 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
 
   // 1. TOP HEADER BOX
   doc.rect(leftX, y, tableWidth, 12);
+
+  // Left side: Project Logo (if present)
+  if (preloadedLogo) {
+    try {
+      const maxW = 32;
+      const maxH = 10;
+      const aspect = (preloadedLogo.width || 1) / (preloadedLogo.height || 1);
+      let logoW = maxW;
+      let logoH = logoW / aspect;
+      if (logoH > maxH) {
+        logoH = maxH;
+        logoW = logoH * aspect;
+      }
+      const logoY = y + (12 - logoH) / 2;
+      doc.addImage(preloadedLogo.dataUrl, preloadedLogo.format, leftX + 2, logoY, logoW, logoH);
+    } catch (err) {
+      console.warn('Failed to draw logo in PDF:', err);
+    }
+  }
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(0, 0, 0);
@@ -685,9 +755,14 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
   doc.text('Page 1 of 1', leftX + 2, finalDocBottomY + 3.8);
   doc.text(report.docFooterCode || 'Daily Report-P2-ND000-JDU-09', rightX - 2, finalDocBottomY + 3.8, { align: 'right' });
 
-  // Trigger download
-  const safeFilename = `${project.code}_${report.reportDate}_LaporanHarian.pdf`.replace(/[\/\\]/g, '-');
-  doc.save(safeFilename);
+  // Trigger download with user-specified format: tanggal/bulan/tahun_Jenis Pekerjaan_Nama Kontraktor
+  // Contoh: 17/10/2026_Renewal Tube Settler_PT. Bestindo Putra Mandiri
+  const [yr, mo, da] = (report.reportDate || '2026-10-17').split('-');
+  const dateFormatted = `${da || '17'}/${mo || '10'}/${yr || '2026'}`;
+  const jenisPekerjaan = project.name || 'Renewal Tube Settler';
+  const namaKontraktor = report.contractorSignatory?.companyName || project.contractorName || 'PT. Bestindo Putra Mandiri';
+  const downloadFilename = `${dateFormatted}_${jenisPekerjaan}_${namaKontraktor}.pdf`;
+  doc.save(downloadFilename);
 }
 
 /**

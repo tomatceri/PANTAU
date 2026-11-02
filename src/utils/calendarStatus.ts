@@ -58,19 +58,7 @@ export function getCalendarDayStatusStyle(
   const isCompletedProject = project.status === 'Completed';
   const isBeforeProjectStart = Boolean(project.startDate && dateStr < project.startDate);
 
-  // Explicit rest-day entries (e.g., Sunday security log marked isRestDay / 'rest-day')
-  if (report && (report.isRestDay || report.submissionTiming === 'rest-day')) {
-    return {
-      category: 'rest-day',
-      bg: 'bg-slate-50',
-      border: 'border-slate-200',
-      badgeBg: 'bg-slate-100 text-slate-500 border border-slate-200',
-      indicator: 'bg-slate-300',
-      label: 'Hari Libur',
-      desc: 'Hari libur / tidak ada pekerjaan wajib.',
-      canRemindWa: false,
-    };
-  }
+
 
   // 1. HIJAU (Approved)
   if (report && report.approvalStatus === 'approved') {
@@ -110,20 +98,6 @@ export function getCalendarDayStatusStyle(
       indicator: 'bg-blue-500',
       label: 'Submitted',
       desc: 'Laporan telah dikirim oleh kontraktor dan sedang menunggu review PMO.',
-      canRemindWa: false,
-    };
-  }
-
-  // Hari Libur (Minggu) tanpa laporan kerja aktif
-  if (isSunday) {
-    return {
-      category: 'rest-day',
-      bg: 'bg-slate-50',
-      border: 'border-slate-200',
-      badgeBg: 'bg-slate-100 text-slate-500 border border-slate-200',
-      indicator: 'bg-slate-300',
-      label: 'Hari Libur',
-      desc: 'Hari libur / tidak ada pekerjaan wajib.',
       canRemindWa: false,
     };
   }

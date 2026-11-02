@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Project, DailyReport, UserRole, EscalationAlert 
+  Project, DailyReport, UserRole, EscalationAlert, ContractorAccount 
 } from './types';
 import { 
   INITIAL_PROJECTS, INITIAL_DAILY_REPORTS, 
@@ -35,7 +35,11 @@ import {
   deleteProjectFromCloud,
   fetchCloudDeletedProjects,
   loadProjectsFromSupabase,
-  registerProjectMeta
+  registerProjectMeta,
+  getStoredContractorAccounts,
+  saveStoredContractorAccounts,
+  loadContractorAccountsFromSupabase,
+  saveContractorAccountsToSupabase
 } from './services/supabaseReportService';
 import { CheckCircle2, AlertTriangle, AlertCircle, CalendarDays, Database, Trash2 } from 'lucide-react';
 
@@ -54,7 +58,7 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved) as AuthSession;
         if (
-          (parsed.role === 'contractor' && parsed.username === '@kontraktor') ||
+          parsed.role === 'contractor' ||
           (parsed.role === 'pmo' && parsed.username === '@pmo')
         ) {
           return parsed;
@@ -64,6 +68,11 @@ export default function App() {
       // ignore storage errors
     }
     return null;
+  });
+
+  // Contractor Accounts State - synchronized with Supabase & localStorage
+  const [contractorAccounts, setContractorAccounts] = useState<ContractorAccount[]>(() => {
+    return getStoredContractorAccounts();
   });
 
   // Application State - Initialized with initial projects + custom projects, strictly respecting deleted projects
@@ -163,6 +172,12 @@ export default function App() {
           setTimeout(() => setSupabaseNotification(''), 4000);
         }
       }
+
+      // 4. Fetch contractor accounts from Supabase cloud
+      const cloudAccounts = await loadContractorAccountsFromSupabase();
+      if (cloudAccounts && cloudAccounts.length > 0) {
+        setContractorAccounts(cloudAccounts);
+      }
     } catch (err) {
       console.warn('[Sync] Failed to sync from cloud:', err);
     } finally {
@@ -205,6 +220,9 @@ export default function App() {
         } else if (action.action === 'UPDATE' && action.project) {
           setProjects((prev) => prev.map((p) => (p.id === action.project!.id ? action.project! : p)));
         }
+      },
+      (accounts) => {
+        setContractorAccounts(accounts);
       }
     );
 
@@ -398,6 +416,75 @@ export default function App() {
     setTimeout(() => setSupabaseNotification(''), 4000);
   };
 
+  // Handler: Update project (e.g. Logo & Akses)
+  const handleUpdateProject = async (updatedProj: Project) => {
+    registerProjectMeta(updatedProj);
+    setProjects((prev) => {
+      const next = prev.map((p) => (p.id === updatedProj.id ? updatedProj : p));
+      saveStoredCustomProjects(next);
+      return next;
+    });
+    if (selectedProject?.id === updatedProj.id) {
+      setSelectedProject(updatedProj);
+    }
+    setSupabaseNotification(`⏳ Memperbarui logo & akses proyek "${updatedProj.name}"...`);
+    try {
+      await saveProjectToSupabase(updatedProj);
+      setSupabaseNotification(`✓ Logo & akses proyek "${updatedProj.name}" berhasil disimpan & disinkronkan!`);
+    } catch {}
+    setTimeout(() => setSupabaseNotification(''), 4000);
+  };
+
+  // Handler: Save and sync contractor accounts
+  const handleSaveContractorAccounts = async (accounts: ContractorAccount[]) => {
+    setContractorAccounts(accounts);
+    saveStoredContractorAccounts(accounts);
+    try {
+      const res = await saveContractorAccountsToSupabase(accounts);
+      if (res.success) {
+        setSupabaseNotification('✓ Akun kontraktor & otorisasi berhasil disinkronkan ke cloud!');
+      }
+    } catch {}
+    setTimeout(() => setSupabaseNotification(''), 4000);
+  };
+
+  // Contractor Isolation: filter visible projects & reports
+  const visibleProjects = React.useMemo(() => {
+    if (currentRole === 'pmo') {
+      return projects; // PMO sees ALL projects across all contractors
+    }
+
+    const username = authSession?.username?.trim().toLowerCase() || '';
+    if (!username) return [];
+
+    const contractorAcc = contractorAccounts.find(
+      (a) => a.username.trim().toLowerCase() === username
+    );
+    const assignedIds = new Set(contractorAcc?.assignedProjectIds || []);
+
+    return projects.filter((p) => {
+      // 1. Account has assigned project ID
+      if (assignedIds.has(p.id)) return true;
+      // 2. Project has assigned username matching contractor
+      if (p.assignedContractorUsernames?.some((u) => u.trim().toLowerCase() === username)) {
+        return true;
+      }
+      // 3. Fallback for default @kontraktor if no explicit restrictions are set
+      if (username === '@kontraktor' && (!p.assignedContractorUsernames || p.assignedContractorUsernames.length === 0)) {
+        return true;
+      }
+      return false;
+    });
+  }, [projects, currentRole, authSession, contractorAccounts]);
+
+  const visibleReports = React.useMemo(() => {
+    if (currentRole === 'pmo') {
+      return dailyReports; // PMO sees ALL daily reports
+    }
+    const visibleIds = new Set(visibleProjects.map((p) => p.id));
+    return dailyReports.filter((r) => visibleIds.has(r.projectId));
+  }, [dailyReports, currentRole, visibleProjects]);
+
   // Current active report for Daily Report Form
   const activeDailyReport = selectedProject && selectedReportDate
     ? currentProjectDailies.find((r) => r.reportDate === selectedReportDate) || {
@@ -458,7 +545,7 @@ export default function App() {
   };
 
   if (!authSession) {
-    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+    return <LoginPage contractorAccounts={contractorAccounts} onLoginSuccess={handleLoginSuccess} />;
   }
 
   return (
@@ -499,9 +586,11 @@ export default function App() {
         {/* VIEW 1: PROJECT SELECTION (If no project selected) */}
         {!selectedProject ? (
           <ProjectList
-            projects={projects}
-            allReports={dailyReports}
+            projects={visibleProjects}
+            allReports={visibleReports}
             currentRole={currentRole}
+            contractorAccounts={contractorAccounts}
+            loggedInUsername={authSession.username}
             onSelectProject={(p) => {
               const latestToday = getRealTodayStr();
               const dt = parseLocalDate(latestToday);
@@ -523,8 +612,10 @@ export default function App() {
               setActiveTab('daily');
             }}
             onAddProject={handleAddProject}
+            onUpdateProject={handleUpdateProject}
             onToggleProjectStatus={handleToggleProjectStatus}
             onDeleteProject={handleDeleteProject}
+            onSaveContractorAccounts={handleSaveContractorAccounts}
             onSyncFromCloud={() => syncFromSupabase(false)}
             isSyncingCloud={isSyncingCloud}
           />

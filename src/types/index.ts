@@ -151,6 +151,17 @@ export interface DailyReport {
   isRestDay?: boolean;
 }
 
+export interface ContractorAccount {
+  id: string;
+  username: string; // e.g. "@bestindo", always starts with @
+  password: string;
+  companyName: string;
+  contactPerson?: string;
+  phone?: string;
+  assignedProjectIds: string[];
+  createdAt: string;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -164,6 +175,8 @@ export interface Project {
   status: 'Active' | 'Under Review' | 'Completed';
   description: string;
   targetSubmissionHour: number; // e.g. 09:00 AM (H+1)
+  logoUrl?: string; // Data URL or Image URL for the official kop header (top left)
+  assignedContractorUsernames?: string[]; // Contractor usernames allowed to access this project
 }
 
 export interface WeeklyReport {

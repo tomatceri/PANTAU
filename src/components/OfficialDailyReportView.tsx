@@ -64,16 +64,32 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full overflow-x-auto pb-4">
       {/* PAGE 1: EXACT REPLICA OF AAA/CONS/FM-014 */}
       <div 
         id="official-daily-report-page-1"
-        className="bg-white text-black font-sans border-2 border-black max-w-[210mm] mx-auto p-4 sm:p-6 shadow-md print:shadow-none print:border-black print:p-2 print:m-0"
+        className="bg-white text-black font-sans border-2 border-black w-[760px] sm:w-[794px] min-w-[760px] max-w-[210mm] mx-auto p-4 sm:p-6 shadow-md print:shadow-none print:border-black print:p-2 print:m-0 shrink-0"
         style={{ minHeight: '290mm' }}
       >
-        {/* Top Header Box */}
-        <div className="border border-black p-2.5 mb-1.5 relative flex items-center justify-center min-h-[52px]">
-          <div className="text-center">
+        {/* Top Header Box with Logo at top-left */}
+        <div className="border border-black p-2 mb-1.5 flex items-center justify-between min-h-[58px]">
+          {/* Left: Project / Contractor Logo */}
+          <div className="w-[110px] sm:w-[130px] flex items-center justify-start shrink-0 pl-1">
+            {project?.logoUrl ? (
+              <img
+                src={project.logoUrl}
+                alt="Logo Laporan Harian"
+                className="max-h-12 sm:max-h-14 max-w-[110px] sm:max-w-[130px] object-contain"
+              />
+            ) : (
+              <div className="h-10 w-24 border border-dashed border-slate-300 rounded flex items-center justify-center text-[8px] text-slate-400 uppercase tracking-wider font-semibold">
+                Logo Proyek
+              </div>
+            )}
+          </div>
+
+          {/* Center: Title */}
+          <div className="text-center flex-1 px-2">
             <h1 className="text-base sm:text-lg font-black tracking-wider uppercase text-slate-950 leading-tight">
               LAPORAN HARIAN
             </h1>
@@ -81,7 +97,9 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
               DAILY ACTIVITY REPORT
             </h2>
           </div>
-          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-right text-[9px] sm:text-[10px] space-y-0.5 font-medium">
+
+          {/* Right: Form Metadata */}
+          <div className="w-[125px] sm:w-[145px] text-right text-[9px] sm:text-[10px] space-y-0.5 font-medium shrink-0 pr-1">
             <div className="flex justify-end gap-1.5">
               <span className="font-bold text-slate-700">No. Form :</span>
               <span className="font-mono font-bold text-slate-950">{report.docCode || 'AAA/CONS/FM-014 Rev01'}</span>
