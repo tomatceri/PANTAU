@@ -19,7 +19,7 @@ import {
   CheckCircle2, RotateCcw, Send, Eye, FileText, Upload, Printer, 
   AlertTriangle, ShieldCheck, Calendar, Users, Wrench, Package, 
   Sun, Check, Sparkles, RefreshCw, Layers, FileSpreadsheet, ClipboardPaste, X,
-  Settings2
+  Settings2, Info
 } from 'lucide-react';
 
 interface DailyReportFormProps {
@@ -2562,7 +2562,20 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
 
           {/* SECTION 3: PEKERJAAN (BOQ) & MATERIAL (BOM) DENGAN FORMAT EXCEL CELL */}
           {contractorSection === 'boq_bom' && (
-            <div className="space-y-6">
+            <div className="space-y-4">
+              {/* Note sebelum pengisian BOQ sesuai PO */}
+              <div className="bg-amber-50/90 border border-amber-200/90 rounded-xl p-3 flex items-start sm:items-center gap-2.5 text-amber-900 shadow-2xs">
+                <div className="p-1 rounded-md bg-amber-100 text-amber-700 shrink-0 mt-0.5 sm:mt-0">
+                  <Info className="w-4 h-4" />
+                </div>
+                <div className="text-xs">
+                  <span className="font-bold text-amber-950">Catatan:</span>{' '}
+                  <span className="text-amber-900">
+                    Pengisian jenis dan rincian pekerjaan (BOQ) <strong>wajib sesuai dengan Purchase Order (PO)</strong>.
+                  </span>
+                </div>
+              </div>
+
               {/* BOQ Items - Excel Grid */}
               <div className="bg-white border-2 border-emerald-800/30 rounded-xl shadow-xs overflow-hidden">
                 {/* Excel Toolbar */}
@@ -2578,6 +2591,10 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                       </div>
                       <p className="text-[11px] text-emerald-100/90">
                         Klik cell mana saja untuk edit, atau klik <strong>Paste dari Excel</strong> untuk salin puluhan baris sekaligus.
+                      </p>
+                      <p className="text-[11px] text-amber-200 font-medium mt-0.5 flex items-center gap-1.5">
+                        <span className="text-amber-300 font-bold">*Note:</span>
+                        <span>Pengisian item dan kode BOQ harus sesuai dengan Purchase Order (PO).</span>
                       </p>
                     </div>
                   </div>
@@ -3048,6 +3065,19 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                           </td>
                         </tr>
                       ))}
+                      {(formData.boqItems || []).length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="py-8 text-center text-slate-500 bg-slate-50/60">
+                            <p className="font-semibold text-slate-700 text-xs">Belum ada baris pekerjaan (BOQ)</p>
+                            <p className="text-[11px] text-slate-500 mt-1">
+                              Klik <span className="font-bold text-emerald-700">+1 Baris</span> atau <span className="font-bold text-emerald-700">📋 Paste dari Excel</span> di atas untuk mulai input.
+                            </p>
+                            <p className="text-[10.5px] text-amber-700 font-medium mt-1">
+                              *Catatan: Rincian dan kode pekerjaan wajib mengacu pada Purchase Order (PO).
+                            </p>
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -4188,6 +4218,15 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {excelModalTarget === 'boq' && (
+              <div className="bg-amber-50 border border-amber-200/90 text-amber-900 px-3 py-2 rounded-lg text-xs flex items-center gap-2">
+                <Info className="w-4 h-4 text-amber-600 shrink-0" />
+                <span className="text-[11px] leading-snug">
+                  <strong className="text-amber-950">Catatan:</strong> Seluruh item dan kode pekerjaan BOQ yang ditempel wajib mengacu dan sesuai dengan dokumen <strong>Purchase Order (PO)</strong>.
+                </span>
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">

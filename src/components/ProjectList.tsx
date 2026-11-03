@@ -99,7 +99,23 @@ export const ProjectList: React.FC<ProjectListProps> = ({
 
   // Instant optimistic removal for deleted contractor accounts (avoids delay or iframe popup blocking)
   const [deletedAccountIds, setDeletedAccountIds] = useState<Set<string>>(new Set());
-  const activeContractorAccounts = contractorAccounts.filter((a) => !deletedAccountIds.has(a.id));
+  
+  // Safe helper ensuring assignedProjectIds is always an array
+  const safeAssigned = (arr?: string[]): string[] => (Array.isArray(arr) ? arr : []);
+
+  const activeContractorAccounts = (contractorAccounts || [])
+    .filter((a): a is ContractorAccount => Boolean(a && a.id && !deletedAccountIds.has(a.id)))
+    .map((acc) => ({
+      ...acc,
+      assignedProjectIds: Array.isArray(acc.assignedProjectIds)
+        ? acc.assignedProjectIds
+        : Array.isArray((acc as any).assigned_project_ids)
+        ? (acc as any).assigned_project_ids
+        : [],
+      companyName: acc.companyName || 'PT Kontraktor Lapangan',
+      username: acc.username || '@kontraktor',
+      password: acc.password || '1234',
+    }));
 
   const fileInputAddRef = useRef<HTMLInputElement>(null);
   const fileInputLogoAccessRef = useRef<HTMLInputElement>(null);
@@ -302,14 +318,15 @@ export const ProjectList: React.FC<ProjectListProps> = ({
 
   // Copy credentials to clipboard
   const handleCopyCredentials = (acc: ContractorAccount) => {
+    const assignedIds = safeAssigned(acc.assignedProjectIds);
     const textToCopy = `PORTAL PANTAU - KREDENSIAL LOGIN KONTRAKTOR:
 ----------------------------------------
-Nama Kontraktor: ${acc.companyName}
+Nama Kontraktor: ${acc.companyName || 'PT Kontraktor'}
 Username       : ${acc.username}
 Password       : ${acc.password}
 Akses Proyek   : ${
-      acc.assignedProjectIds.length > 0
-        ? acc.assignedProjectIds
+      assignedIds.length > 0
+        ? assignedIds
             .map((id) => projects.find((p) => p.id === id)?.name || id)
             .join(', ')
         : 'Belum di-assign'
@@ -328,11 +345,12 @@ Gunakan kredensial di atas untuk masuk ke sistem pelaporan harian.`;
     setEditingAccount(acc);
     setEditUsername(acc.username);
     setEditPassword(acc.password);
-    setEditCompany(acc.companyName);
+    setEditCompany(acc.companyName || '');
     setEditContact(acc.contactPerson || '');
     setEditPhone(acc.phone || '');
-    const assignedIds = projects
-      .filter((p) => acc.assignedProjectIds.includes(p.id) || p.assignedContractorUsernames?.includes(acc.username))
+    const accAssigned = safeAssigned(acc.assignedProjectIds);
+    const assignedIds = (projects || [])
+      .filter((p) => accAssigned.includes(p.id) || (Array.isArray(p.assignedContractorUsernames) && p.assignedContractorUsernames.includes(acc.username)))
       .map((p) => p.id);
     setEditProjects(Array.from(new Set(assignedIds)));
   };
@@ -739,27 +757,39 @@ Gunakan kredensial di atas untuk masuk ke sistem pelaporan harian.`;
           )}
 
           {currentRole === 'pmo' && (
-            <button
-              type="button"
-              onClick={() => {
-                setName('');
-                setCode('');
-                setContractor('');
-                setPmo('');
-                setLocation('');
-                setStartDate(todayStr);
-                setAddProjectLogo('');
-                setSelectedContractorUsernames([]);
-                setShowInlineContractorForm(false);
-                setInlineUsername('');
-                setInlinePassword('');
-                setShowAddModal(true);
-              }}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors shrink-0 shadow-xs cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Tambah Proyek Baru</span>
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setShowContractorModal(true)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-indigo-700 bg-white border border-indigo-300 hover:bg-indigo-50 rounded-lg transition-colors shrink-0 shadow-xs cursor-pointer"
+                title="Buka panel kelola dan otorisasi akun kontraktor"
+              >
+                <Users className="w-4 h-4 text-indigo-600" />
+                <span>Kelola Akun Kontraktor</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setName('');
+                  setCode('');
+                  setContractor('');
+                  setPmo('');
+                  setLocation('');
+                  setStartDate(todayStr);
+                  setAddProjectLogo('');
+                  setSelectedContractorUsernames([]);
+                  setShowInlineContractorForm(false);
+                  setInlineUsername('');
+                  setInlinePassword('');
+                  setShowAddModal(true);
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors shrink-0 shadow-xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Tambah Proyek Baru</span>
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -1117,119 +1147,7 @@ Gunakan kredensial di atas untuk masuk ke sistem pelaporan harian.`;
                 </div>
               </div>
 
-              {/* SECTION: ASSIGN AKUN KONTRAKTOR */}
-              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                      <Users className="w-4 h-4 text-indigo-600" />
-                      <span>Otorisasi Akun Kontraktor (Assign Akses)</span>
-                    </span>
-                  </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setShowInlineContractorForm((prev) => !prev)}
-                    className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg hover:bg-indigo-100 transition-colors cursor-pointer"
-                  >
-                    {showInlineContractorForm ? 'Batal Buat Baru' : '+ Buat Akun Baru Sekaligus'}
-                  </button>
-                </div>
-
-                {/* Existing Contractor Accounts Checkboxes with Delete Feature */}
-                {activeContractorAccounts.length > 0 ? (
-                  <div className="space-y-1 bg-white p-2 border border-slate-200 rounded-lg max-h-44 overflow-y-auto">
-                    {activeContractorAccounts.map((acc) => {
-                      const isChecked = selectedContractorUsernames.includes(acc.username);
-                      const linkedProj = projects.find(
-                        (p) =>
-                          p.assignedContractorUsernames?.includes(acc.username) ||
-                          acc.assignedProjectIds?.includes(p.id)
-                      );
-                      const companyLabel = acc.companyName?.trim() || linkedProj?.contractorName || linkedProj?.name || 'Kontraktor';
-
-                      return (
-                        <div
-                          key={acc.id}
-                          className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg transition-colors text-xs border border-slate-100 hover:border-slate-200 group"
-                        >
-                          <label className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedContractorUsernames((prev) => [...prev, acc.username]);
-                                } else {
-                                  setSelectedContractorUsernames((prev) =>
-                                    prev.filter((u) => u !== acc.username)
-                                  );
-                                }
-                              }}
-                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0">
-                              <span className="font-mono font-bold text-slate-900">{acc.username}</span>
-                              <span className="text-slate-600 truncate font-medium">({companyLabel})</span>
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200 text-[10px] font-mono font-bold">
-                                <span className="text-amber-700">Pass:</span>
-                                <span className="text-slate-900">{acc.password || '1234'}</span>
-                              </span>
-                            </div>
-                          </label>
-
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleDeleteContractorAccount(acc.id);
-                            }}
-                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer shrink-0 ml-2"
-                            title={`Hapus akun ${acc.username}`}
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-xs text-slate-500 bg-white p-3 rounded-lg border border-slate-200 italic">
-                    Belum ada akun kontraktor terdaftar. Klik "+ Buat Akun Baru Sekaligus" di atas untuk membuat akun sekarang.
-                  </div>
-                )}
-
-                {/* Inline form to create contractor account simultaneously */}
-                {showInlineContractorForm && (
-                  <div className="p-3 bg-indigo-50/80 border border-indigo-200 rounded-lg space-y-2.5 animate-fade-in">
-                    <div className="font-bold text-xs text-indigo-950 flex items-center gap-1.5">
-                      <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Buat Akun Kontraktor Baru:</span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">Username Kontraktor</label>
-                        <input
-                          type="text"
-                          value={inlineUsername}
-                          onChange={(e) => setInlineUsername(e.target.value)}
-                          className="w-full px-2.5 py-1.5 bg-white border border-indigo-300 rounded text-xs focus:ring-1 focus:ring-indigo-500 font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">Password</label>
-                        <input
-                          type="text"
-                          value={inlinePassword}
-                          onChange={(e) => setInlinePassword(e.target.value)}
-                          className="w-full px-2.5 py-1.5 bg-white border border-indigo-300 rounded text-xs focus:ring-1 focus:ring-indigo-500 font-mono"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
 
               <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
                 <button
@@ -1447,257 +1365,209 @@ Gunakan kredensial di atas untuk masuk ke sistem pelaporan harian.`;
       )}
 
       {/* MODAL 3: KELOLA AKUN KONTRAKTOR (PMO ONLY) */}
+      {/* MODAL 3: KELOLA AKUN KONTRAKTOR & HAK AKSES PROYEK (PMO ONLY - EXACT USER DESIGN) */}
       {showContractorModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full my-auto p-5 sm:p-7 space-y-5 max-h-[94vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full my-auto p-5 sm:p-7 space-y-6 max-h-[94vh] overflow-y-auto border border-slate-200">
+            {/* Top Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <Users className="w-5 h-5 text-indigo-600" />
-                  <span>Kelola Akun Kontraktor & Otorisasi Proyek</span>
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Buat akun login tiap kontraktor, atur password, salin kredensial, dan centang proyek yang dipegang.
-                </p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Users className="w-5 h-5 text-sky-400" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                    Kelola Akun Kontraktor & Hak Akses Proyek
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Buat akun login masing-masing kontraktor. Tiap kontraktor hanya bisa melihat proyek yang di-assign ke akunnya.
+                  </p>
+                </div>
               </div>
               <button
+                type="button"
                 onClick={() => setShowContractorModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* FORM: BUAT AKUN KONTRAKTOR BARU */}
-            <form onSubmit={handleCreateContractorAccount} className="p-4 rounded-xl border border-indigo-200 bg-indigo-50/50 space-y-3 text-xs">
-              <div className="font-bold text-slate-900 flex items-center gap-2">
-                <Plus className="w-4 h-4 text-indigo-600" />
-                <span>Buat Akun Login Kontraktor Baru</span>
+            {/* CARD 1: + BUAT AKUN KONTRAKTOR BARU */}
+            <div className="p-4 sm:p-5 rounded-xl border border-blue-200 bg-blue-50/20 space-y-3.5">
+              <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                <Plus className="w-4 h-4 text-blue-600" />
+                <span>Buat Akun Kontraktor Baru</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Username Akun *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: @bestindo"
-                    value={newAccUsername}
-                    onChange={(e) => setNewAccUsername(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-mono"
-                  />
+              <form onSubmit={handleCreateContractorAccount} className="space-y-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Nama Perusahaan Kontraktor *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="PT. Nama Kontraktor"
+                      value={newAccCompany}
+                      onChange={(e) => setNewAccCompany(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Username Login *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Contoh: @kontraktor_a"
+                      value={newAccUsername}
+                      onChange={(e) => setNewAccUsername(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Password Login *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Contoh: pass1234"
+                      value={newAccPassword}
+                      onChange={(e) => setNewAccPassword(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    />
+                  </div>
                 </div>
 
+                {/* Assign Langsung ke Proyek (Opsional) */}
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Password *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: 1234"
-                    value={newAccPassword}
-                    onChange={(e) => setNewAccPassword(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-mono"
-                  />
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Assign Langsung ke Proyek (Opsional):
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {projects.map((p) => {
+                      const isChecked = newAccProjects.includes(p.id);
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => {
+                            setNewAccProjects((prev) =>
+                              isChecked ? prev.filter((id) => id !== p.id) : [...prev, p.id]
+                            );
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer flex items-center gap-1.5 ${
+                            isChecked
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-2xs font-semibold'
+                              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span>{isChecked ? '✓' : '+'}</span>
+                          <span>{p.name} {p.code ? `(${p.code})` : ''}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Nama Perusahaan Kontraktor *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: PT. Bestindo Putra Mandiri"
-                    value={newAccCompany}
-                    onChange={(e) => setNewAccCompany(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Nama Kontak Person</label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Bpk. Bambang"
-                    value={newAccContact}
-                    onChange={(e) => setNewAccContact(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">No. WhatsApp / HP</label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: 081234567890"
-                    value={newAccPhone}
-                    onChange={(e) => setNewAccPhone(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-mono"
-                  />
-                </div>
-
-                <div className="flex items-end">
+                <div className="flex justify-end pt-1">
                   <button
                     type="submit"
-                    className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Plus className="w-4 h-4" />
-                    <span>Daftarkan Akun</span>
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Simpan Akun Kontraktor Baru</span>
                   </button>
                 </div>
-              </div>
+              </form>
+            </div>
 
-              {/* Checkboxes: Proyek yang dipegang */}
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Pilih Proyek yang Dipegang:</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-white p-2.5 rounded-lg border border-slate-200 max-h-28 overflow-y-auto">
-                  {projects.map((p) => {
-                    const isChecked = newAccProjects.includes(p.id);
-                    return (
-                      <label key={p.id} className="flex items-center gap-2 text-[11px] cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setNewAccProjects((prev) => [...prev, p.id]);
-                            } else {
-                              setNewAccProjects((prev) => prev.filter((id) => id !== p.id));
-                            }
-                          }}
-                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="truncate font-medium text-slate-800">{p.name}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            </form>
-
-            {/* DAFTAR AKUN KONTRAKTOR YANG TERDAFTAR */}
+            {/* SECTION: DAFTAR AKUN KONTRAKTOR TERDAFTAR */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <span>Daftar Akun Kontraktor Terdaftar</span>
-                  <span className="font-mono text-xs font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full border border-slate-200">
-                    {contractorAccounts.length} Akun
-                  </span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-600 gap-1 border-b border-slate-100 pb-2">
+                <h4 className="font-bold text-slate-900 text-sm">
+                  Daftar Akun Kontraktor Terdaftar ({activeContractorAccounts.length})
                 </h4>
+                <span className="text-slate-500 text-[11px] sm:text-xs">
+                  Centang proyek di bawah tiap akun untuk mengatur akses proyeknya
+                </span>
               </div>
 
-              <div className="space-y-2.5">
-                {contractorAccounts.map((acc) => {
-                  const isPassVisible = visiblePasswords[acc.id] || false;
-                  const isCopied = copiedAccountId === acc.id;
-                  const isEditingPass = editingPasswordId === acc.id;
+              {/* LIST OF CONTRACTOR ACCOUNTS */}
+              <div className="space-y-3">
+                {activeContractorAccounts.length === 0 ? (
+                  <div className="text-xs text-slate-500 bg-slate-50 p-6 rounded-xl border border-slate-200 text-center italic">
+                    Belum ada akun kontraktor. Gunakan form di atas untuk menambahkan akun kontraktor baru.
+                  </div>
+                ) : (
+                  activeContractorAccounts.map((acc) => {
+                    const isPassVisible = visiblePasswords[acc.id] || false;
+                    const isCopied = copiedAccountId === acc.id;
+                    const accAssignedIds = safeAssigned(acc.assignedProjectIds);
+                    const assignedProjList = (projects || []).filter(
+                      (p) =>
+                        accAssignedIds.includes(p.id) ||
+                        (Array.isArray(p.assignedContractorUsernames) && p.assignedContractorUsernames.includes(acc.username))
+                    );
 
-                  // Find assigned projects
-                  const assignedProjList = projects.filter(
-                    (p) =>
-                      acc.assignedProjectIds.includes(p.id) ||
-                      p.assignedContractorUsernames?.includes(acc.username)
-                  );
-
-                  return (
-                    <div
-                      key={acc.id}
-                      className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5 hover:border-indigo-300 transition-colors"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm shrink-0">
-                            <HardHat className="w-4 h-4" />
+                    return (
+                      <div
+                        key={acc.id}
+                        className="bg-white border border-slate-200 hover:border-slate-300 rounded-xl p-4 sm:p-5 space-y-3 shadow-2xs transition-all"
+                      >
+                        {/* Row 1: Company Name, Username Pill, Assigned Count Badge, Actions (Salin & Trash) */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-slate-900 text-sm uppercase">
+                              {acc.companyName || 'PT Kontraktor'}
+                            </span>
+                            <span className="px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-mono text-xs font-bold">
+                              {acc.username}
+                            </span>
+                            <span className="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold">
+                              {assignedProjList.length} Proyek Di-assign
+                            </span>
                           </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono font-bold text-slate-900 text-sm">
-                                {acc.username}
-                              </span>
-                              <span className="text-xs text-slate-400">·</span>
-                              <span className="text-xs font-semibold text-slate-700">
-                                {acc.companyName}
-                              </span>
-                            </div>
-                            <div className="text-[11px] text-slate-500">
-                              {acc.contactPerson ? `${acc.contactPerson} ` : ''}
-                              {acc.phone ? `(${acc.phone})` : ''}
-                            </div>
+
+                          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                            {/* Salin Akun */}
+                            <button
+                              type="button"
+                              onClick={() => handleCopyCredentials(acc)}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer shadow-2xs ${
+                                isCopied
+                                  ? 'bg-emerald-600 text-white border-emerald-600'
+                                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                              }`}
+                              title="Salin kredensial username & password"
+                            >
+                              {isCopied ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5 text-slate-600" />}
+                              <span>{isCopied ? 'Tersalin!' : 'Salin Akun'}</span>
+                            </button>
+
+                            {/* Hapus Akun */}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteContractorAccount(acc.id)}
+                              className="p-1.5 text-rose-600 hover:text-white bg-white hover:bg-rose-600 border border-rose-200 hover:border-rose-600 rounded-lg transition-colors cursor-pointer shadow-2xs"
+                              title={`Hapus akun ${acc.username}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
 
-                        {/* Action buttons: Salin Kredensial, Edit Akun, Hapus */}
-                        <div className="flex items-center gap-1.5 self-end sm:self-auto flex-wrap">
-                          {/* Salin Kredensial Button */}
-                          <button
-                            type="button"
-                            onClick={() => handleCopyCredentials(acc)}
-                            className={`flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg border transition-all cursor-pointer shadow-2xs ${
-                              isCopied
-                                ? 'bg-emerald-600 text-white border-emerald-600'
-                                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
-                            }`}
-                            title="Salin username dan password untuk diberikan ke kontraktor"
-                          >
-                            {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                            <span>{isCopied ? 'Tersalin!' : 'Salin'}</span>
-                          </button>
-
-                          {/* Edit Akun Button (Username & Password & Info) */}
-                          <button
-                            type="button"
-                            onClick={() => handleStartEditAccount(acc)}
-                            className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg border border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50 transition-all cursor-pointer shadow-2xs"
-                            title="Edit username, password, nama perusahaan, dan otorisasi proyek"
-                          >
-                            <Pencil className="w-3.5 h-3.5 text-indigo-600" />
-                            <span>Edit Akun</span>
-                          </button>
-
-                          {/* Delete Account */}
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteContractorAccount(acc.id)}
-                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
-                            title="Hapus akun kontraktor ini"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Password Info & Edit */}
-                      <div className="flex items-center gap-3 text-xs bg-white p-2 rounded-lg border border-slate-200 flex-wrap">
-                        <div className="flex items-center gap-1.5 text-slate-600">
-                          <Lock className="w-3.5 h-3.5 text-slate-400" />
-                          <span>Password:</span>
-                        </div>
-
-                        {isEditingPass ? (
+                        {/* Row 2: Password, Toggle Eye, Ubah Username & Password */}
+                        <div className="flex items-center gap-3 text-xs text-slate-600 flex-wrap">
                           <div className="flex items-center gap-1.5">
-                            <input
-                              type="text"
-                              value={tempNewPassword}
-                              onChange={(e) => setTempNewPassword(e.target.value)}
-                              placeholder="Password baru"
-                              className="px-2 py-0.5 border border-indigo-300 rounded text-xs font-mono w-28"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleSaveChangedPassword(acc.id)}
-                              className="px-2 py-0.5 bg-indigo-600 text-white rounded text-[10px] font-bold cursor-pointer"
-                            >
-                              Simpan
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setEditingPasswordId(null)}
-                              className="px-2 py-0.5 bg-slate-200 text-slate-700 rounded text-[10px] cursor-pointer"
-                            >
-                              Batal
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                            <span>Password:</span>
+                            <span className="font-mono font-bold tracking-widest text-slate-900 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
                               {isPassVisible ? acc.password : '••••••••'}
                             </span>
                             <button
@@ -1708,91 +1578,93 @@ Gunakan kredensial di atas untuk masuk ke sistem pelaporan harian.`;
                                   [acc.id]: !prev[acc.id],
                                 }))
                               }
-                              className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                              className="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer ml-0.5"
+                              title={isPassVisible ? 'Sembunyikan password' : 'Lihat password'}
                             >
                               {isPassVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingPasswordId(acc.id);
-                                setTempNewPassword(acc.password);
-                              }}
-                              className="text-[11px] text-blue-700 hover:underline cursor-pointer ml-1"
-                            >
-                              Ubah Password
-                            </button>
                           </div>
-                        )}
-                      </div>
 
-                      {/* Proyek yang dipegang (Centang Proyek) */}
-                      <div className="space-y-1">
-                        <div className="text-[11px] font-semibold text-slate-700">
-                          Proyek yang Diberikan Akses ({assignedProjList.length}):
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditAccount(acc)}
+                            className="text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 cursor-pointer hover:underline"
+                          >
+                            <Pencil className="w-3 h-3" />
+                            <span>Ubah Username & Password</span>
+                          </button>
                         </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {projects.map((p) => {
-                            const isAssigned =
-                              acc.assignedProjectIds.includes(p.id) ||
-                              p.assignedContractorUsernames?.includes(acc.username);
 
-                            return (
-                              <button
-                                key={p.id}
-                                type="button"
-                                onClick={() => {
-                                  // Toggle project assignment for this contractor
-                                  const updated = contractorAccounts.map((a) => {
-                                    if (a.id === acc.id) {
-                                      const set = new Set(a.assignedProjectIds);
-                                      if (isAssigned) {
-                                        set.delete(p.id);
-                                      } else {
-                                        set.add(p.id);
+                        {/* Row 3: Proyek yang Dipegang Akun @username */}
+                        <div className="space-y-1.5 pt-1 border-t border-slate-100">
+                          <div className="text-[11px] font-semibold text-slate-700">
+                            Proyek yang Dipegang Akun {acc.username}:
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {(projects || []).map((p) => {
+                              const itemAssignedIds = safeAssigned(acc.assignedProjectIds);
+                              const isAssigned =
+                                itemAssignedIds.includes(p.id) ||
+                                (Array.isArray(p.assignedContractorUsernames) && p.assignedContractorUsernames.includes(acc.username));
+
+                              return (
+                                <button
+                                  key={p.id}
+                                  type="button"
+                                  onClick={() => {
+                                    // Toggle project assignment for this contractor
+                                    const updated = contractorAccounts.map((a) => {
+                                      if (a.id === acc.id) {
+                                        const set = new Set(safeAssigned(a.assignedProjectIds));
+                                        if (isAssigned) {
+                                          set.delete(p.id);
+                                        } else {
+                                          set.add(p.id);
+                                        }
+                                        return { ...a, assignedProjectIds: Array.from(set) };
                                       }
-                                      return { ...a, assignedProjectIds: Array.from(set) };
-                                    }
-                                    return a;
-                                  });
-                                  onSaveContractorAccounts?.(updated);
-
-                                  // Also update project's assignedContractorUsernames
-                                  if (onUpdateProject) {
-                                    const currUsers = p.assignedContractorUsernames || [];
-                                    const nextUsers = isAssigned
-                                      ? currUsers.filter((u) => u !== acc.username)
-                                      : [...currUsers, acc.username];
-                                    onUpdateProject({
-                                      ...p,
-                                      assignedContractorUsernames: nextUsers,
+                                      return a;
                                     });
-                                  }
-                                }}
-                                className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
-                                  isAssigned
-                                    ? 'bg-blue-600 text-white border-blue-600 font-bold shadow-2xs'
-                                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
-                                }`}
-                              >
-                                {isAssigned && <Check className="w-3 h-3" />}
-                                <span>{p.name}</span>
-                              </button>
-                            );
-                          })}
+                                    onSaveContractorAccounts?.(updated);
+
+                                    // Also update project's assignedContractorUsernames
+                                    if (onUpdateProject) {
+                                      const currUsers = p.assignedContractorUsernames || [];
+                                      const nextUsers = isAssigned
+                                        ? currUsers.filter((u) => u !== acc.username)
+                                        : [...currUsers, acc.username];
+                                      onUpdateProject({
+                                        ...p,
+                                        assignedContractorUsernames: nextUsers,
+                                      });
+                                    }
+                                  }}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+                                    isAssigned
+                                      ? 'bg-emerald-600 text-white border-emerald-600'
+                                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                                  }`}
+                                >
+                                  <span>{isAssigned ? '✓' : '+'}</span>
+                                  <span>{p.name} {p.code ? `(${p.code})` : ''}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             </div>
 
+            {/* Modal Footer: Selesai Button */}
             <div className="pt-2 flex items-center justify-end border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => setShowContractorModal(false)}
-                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-xs cursor-pointer text-xs"
+                className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-xs cursor-pointer text-xs"
               >
                 Selesai
               </button>

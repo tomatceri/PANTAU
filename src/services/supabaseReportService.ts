@@ -375,22 +375,42 @@ export const DEFAULT_CONTRACTOR_ACCOUNTS: ContractorAccount[] = [
   },
 ];
 
+export function normalizeContractorAccount(acc: any): ContractorAccount {
+  return {
+    id: acc?.id || `acc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    username: acc?.username || '@kontraktor',
+    password: acc?.password || '1234',
+    companyName: acc?.companyName || acc?.company_name || 'PT Kontraktor Lapangan',
+    contactPerson: acc?.contactPerson || acc?.contact_person || '',
+    phone: acc?.phone || '',
+    assignedProjectIds: Array.isArray(acc?.assignedProjectIds)
+      ? acc.assignedProjectIds
+      : Array.isArray(acc?.assigned_project_ids)
+      ? acc.assigned_project_ids
+      : [],
+    createdAt: acc?.createdAt || acc?.created_at || new Date().toISOString(),
+  };
+}
+
 export function getStoredContractorAccounts(): ContractorAccount[] {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_CONTRACTOR_ACCOUNTS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map(normalizeContractorAccount);
+      }
     }
   } catch {
     // ignore
   }
-  return DEFAULT_CONTRACTOR_ACCOUNTS;
+  return DEFAULT_CONTRACTOR_ACCOUNTS.map(normalizeContractorAccount);
 }
 
 export function saveStoredContractorAccounts(accounts: ContractorAccount[]) {
   try {
-    localStorage.setItem(LOCAL_STORAGE_CONTRACTOR_ACCOUNTS_KEY, JSON.stringify(accounts));
+    const safeAccounts = (accounts || []).map(normalizeContractorAccount);
+    localStorage.setItem(LOCAL_STORAGE_CONTRACTOR_ACCOUNTS_KEY, JSON.stringify(safeAccounts));
   } catch {
     // ignore
   }
@@ -405,8 +425,9 @@ export async function loadContractorAccountsFromSupabase(): Promise<ContractorAc
       .maybeSingle();
 
     if (data && data.raw_data && Array.isArray(data.raw_data.accounts)) {
-      saveStoredContractorAccounts(data.raw_data.accounts);
-      return data.raw_data.accounts;
+      const safe = data.raw_data.accounts.map(normalizeContractorAccount);
+      saveStoredContractorAccounts(safe);
+      return safe;
     }
   } catch (err) {
     console.warn('[Supabase] Failed to load contractor accounts:', err);

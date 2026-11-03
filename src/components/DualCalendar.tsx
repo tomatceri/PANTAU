@@ -491,7 +491,8 @@ _Salam, PMO: ${project.pmoLead}_`;
                            style.category === 'submitted' ? 'Menunggu' :
                            style.category === 'needs_revision' ? 'Revisi' :
                            style.category === 'overdue' ? 'Terlambat' :
-                           'Libur'}
+                           style.category === 'today' ? 'Draft' :
+                           style.label || '-'}
                         </span>
                         {/* Desktop label */}
                         <span className={`hidden sm:inline-block text-[10px] font-bold px-2 py-0.5 rounded leading-tight ${style.badgeBg} truncate max-w-full text-left`}>
@@ -528,6 +529,8 @@ _Salam, PMO: ${project.pmoLead}_`;
                             <span className="text-[6.5px] text-amber-900 font-bold bg-amber-100 px-0.5 py-0.5 rounded block leading-none">Revisi</span>
                           ) : style.category === 'overdue' ? (
                             <span className="text-[7px] text-red-700 font-bold bg-red-100 px-0.5 py-0.5 rounded block leading-none">Isi</span>
+                          ) : style.category === 'today' ? (
+                            <span className="text-[7px] text-sky-800 font-bold bg-sky-100 px-0.5 py-0.5 rounded block leading-none">Isi</span>
                           ) : (
                             <span className="text-[7px] text-slate-400 font-medium block leading-none">{report ? 'Lihat' : '-'}</span>
                           )}
