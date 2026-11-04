@@ -52,6 +52,9 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
   const manpower = report.manpower || [];
   const equipment = report.equipment || [];
 
+  // Helper to format quantity values: omit 0 or empty values
+  const formatQty = (v: any) => (!v || v === 0 || v === '0' ? '' : v);
+
   // Weather code visual color
   const getWeatherBadgeClass = (code?: string) => {
     switch (code) {
@@ -122,7 +125,7 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                 PR/ PO ID :
               </td>
               <td className="border border-black px-2.5 py-1 font-mono font-medium w-[32%]">
-                {report.nomorBpmpo || report.reportNumber || 'TKCMPO - 2505010'}
+                {report.nomorBpmpo || project.code || report.reportNumber || ''}
               </td>
               <td className="border border-black px-2.5 py-1 font-bold w-[22%] bg-slate-50">
                 Tanggal Pelaksanaan :
@@ -166,7 +169,7 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
               Catatan :
             </div>
             <div className="text-[8px] sm:text-[8.5px] text-slate-800 leading-relaxed whitespace-pre-wrap">
-              {report.notes || report.generalNotes || report.weather?.delayReason || 'Pekerjaan dilaksanakan sesuai dengan jadwal dan instruksi pengawas lapangan.'}
+              {report.notes || report.generalNotes || ''}
             </div>
           </div>
 
@@ -228,7 +231,7 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                     <tr key={m.id || idx} className="h-[18px]">
                       <td className="border-r border-black text-center px-1 font-mono text-[8px]">{idx + 1}</td>
                       <td className="border-r border-black px-1.5 truncate">{m.trade}</td>
-                      <td className="text-center font-mono font-semibold px-1">{m.count}</td>
+                      <td className="text-center font-mono font-semibold px-1">{formatQty(m.count)}</td>
                     </tr>
                   ))}
                   {Array.from({ length: Math.max(0, 12 - manpower.length) }).map((_, i) => (
@@ -243,7 +246,7 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                       Total Tenaga Kerja :
                     </td>
                     <td className="text-center font-mono py-0.5 font-bold">
-                      {manpower.reduce((acc, cur) => acc + (cur.count || 0), 0)}
+                      {formatQty(manpower.reduce((acc, cur) => acc + (Number(cur.count) || 0), 0))}
                     </td>
                   </tr>
                 </tbody>
@@ -264,7 +267,7 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                   {equipment.slice(0, 12).map((eq, idx) => (
                     <tr key={eq.id || idx} className="h-[18px]">
                       <td className="border-r border-black px-1.5 truncate font-medium">{eq.equipmentName}</td>
-                      <td className="border-r border-black text-center font-mono px-0.5">{eq.count ?? 0}</td>
+                      <td className="border-r border-black text-center font-mono px-0.5">{formatQty(eq.count)}</td>
                       <td className="px-1 text-[8px] truncate">{eq.status || '-'}</td>
                     </tr>
                   ))}
@@ -280,7 +283,7 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                       Total Unit :
                     </td>
                     <td className="border-r border-black text-center font-mono py-0.5 font-bold">
-                      {equipment.reduce((acc, cur) => acc + (cur.count || 0), 0)}
+                      {formatQty(equipment.reduce((acc, cur) => acc + (Number(cur.count) || 0), 0))}
                     </td>
                     <td className="px-1 text-[8px] text-slate-600 font-normal truncate">Unit Terdata</td>
                   </tr>
@@ -378,7 +381,7 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                     <td className="border-r border-black text-center font-mono px-1">{item.kode && item.kode !== '0' ? item.kode : ''}</td>
                     <td className="border-r border-black px-1.5 truncate">{item.deskripsi}</td>
                     <td className="border-r border-black text-center px-1">{item.satuan}</td>
-                    <td className="text-center font-mono font-semibold px-1.5">{item.install}</td>
+                    <td className="text-center font-mono font-semibold px-1.5">{formatQty(item.install)}</td>
                   </tr>
                 ))}
                 {Array.from({ length: Math.max(0, 7 - leftBoq.length) }).map((_, i) => (
@@ -408,7 +411,7 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                     <td className="border-r border-black text-center font-mono px-1">{item.kode && item.kode !== '0' ? item.kode : ''}</td>
                     <td className="border-r border-black px-1.5 truncate">{item.deskripsi}</td>
                     <td className="border-r border-black text-center px-1">{item.satuan}</td>
-                    <td className="text-center font-mono font-semibold px-1.5">{item.install}</td>
+                    <td className="text-center font-mono font-semibold px-1.5">{formatQty(item.install)}</td>
                   </tr>
                 ))}
                 {Array.from({ length: Math.max(0, 7 - rightBoq.length) }).map((_, i) => (
@@ -446,7 +449,7 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                     <td className="border-r border-black text-center font-mono px-1">{item.kode && item.kode !== '0' ? item.kode : ''}</td>
                     <td className="border-r border-black px-1.5 truncate">{item.jenisMaterial}</td>
                     <td className="border-r border-black text-center px-1">{item.satuan}</td>
-                    <td className="text-center font-mono font-semibold px-1.5">{item.install}</td>
+                    <td className="text-center font-mono font-semibold px-1.5">{formatQty(item.install)}</td>
                   </tr>
                 ))}
                 {Array.from({ length: Math.max(0, 4 - leftBom.length) }).map((_, i) => (
@@ -476,7 +479,7 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                     <td className="border-r border-black text-center font-mono px-1">{item.kode && item.kode !== '0' ? item.kode : ''}</td>
                     <td className="border-r border-black px-1.5 truncate">{item.jenisMaterial}</td>
                     <td className="border-r border-black text-center px-1">{item.satuan}</td>
-                    <td className="text-center font-mono font-semibold px-1.5">{item.install}</td>
+                    <td className="text-center font-mono font-semibold px-1.5">{formatQty(item.install)}</td>
                   </tr>
                 ))}
                 {Array.from({ length: Math.max(0, 4 - rightBom.length) }).map((_, i) => (

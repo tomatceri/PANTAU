@@ -492,7 +492,7 @@ export default function App() {
         projectId: selectedProject.id,
         reportNumber: `REP-D-${selectedReportDate.replace(/-/g, '')}`,
         reportDate: selectedReportDate,
-        nomorBpmpo: `BPMPO/2026/X/${selectedReportDate.replace(/-/g, '').slice(-3)}`,
+        nomorBpmpo: selectedProject.code || '',
         docCode: 'AAA/CONS/FM-014 Rev01',
         docEffectiveDate: '14 Juli 2025',
         docFooterCode: 'Daily Report-P2-ND000-JDU-09',

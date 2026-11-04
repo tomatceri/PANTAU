@@ -3,7 +3,7 @@ import { Project, DailyReport, UserRole } from '../types';
 import { 
   ChevronLeft, ChevronRight, CheckCircle2, MessageCircle, 
   AlertTriangle, AlertCircle, Clock, Eye, Edit3, 
-  HelpCircle, Check, Info, CalendarDays
+  HelpCircle, Check, Info, CalendarDays, Calendar, X
 } from 'lucide-react';
 import { getRealTodayStr, formatIndonesianDate } from '../utils/formDefaults';
 import {
@@ -44,6 +44,8 @@ export const DualCalendar: React.FC<DualCalendarProps> = ({
 
   const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'submitted' | 'needs_revision' | 'overdue'>('all');
   const [waToast, setWaToast] = useState<string | null>(null);
+  const [showMonthPickerModal, setShowMonthPickerModal] = useState(false);
+  const [pickerYear, setPickerYear] = useState(currentYear);
 
   const monthNames = INDONESIAN_MONTH_NAMES;
 
@@ -289,23 +291,66 @@ _Salam, PMO: ${project.pmoLead}_`;
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
               <button
+                type="button"
                 onClick={handlePrevMonth}
-                className="p-1.5 rounded hover:bg-white text-slate-700 transition-colors"
+                className="p-1.5 rounded hover:bg-white text-slate-700 transition-colors cursor-pointer"
                 title="Bulan Sebelumnya"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <h2 className="text-base font-bold text-slate-900 w-48 text-center">
-                {monthNames[currentMonth]} {currentYear}
-              </h2>
+
+              {/* Direct Month & Year Dropdown Selectors */}
+              <div className="flex items-center gap-1 px-1">
+                <select
+                  value={currentMonth}
+                  onChange={(e) => onMonthChange(currentYear, parseInt(e.target.value, 10))}
+                  className="bg-white border border-slate-300 text-slate-900 font-bold text-xs sm:text-sm rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer shadow-2xs"
+                  title="Pilih Bulan Langsung"
+                >
+                  {monthNames.map((mName, mIdx) => (
+                    <option key={mName} value={mIdx}>
+                      {mName}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={currentYear}
+                  onChange={(e) => onMonthChange(parseInt(e.target.value, 10), currentMonth)}
+                  className="bg-white border border-slate-300 text-slate-900 font-bold font-mono text-xs sm:text-sm rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer shadow-2xs"
+                  title="Pilih Tahun Langsung"
+                >
+                  {[2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <button
+                type="button"
                 onClick={handleNextMonth}
-                className="p-1.5 rounded hover:bg-white text-slate-700 transition-colors"
+                className="p-1.5 rounded hover:bg-white text-slate-700 transition-colors cursor-pointer"
                 title="Bulan Berikutnya"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
+
+            {/* Quick Month & Year Calendar Overview Modal Trigger */}
+            <button
+              type="button"
+              onClick={() => {
+                setPickerYear(currentYear);
+                setShowMonthPickerModal(true);
+              }}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 text-blue-800 border border-blue-200 hover:border-blue-300 transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+              title="Buka pratinjau 12 bulan kalender untuk lompat langsung ke bulan dan tahun manapun"
+            >
+              <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span className="font-bold">Pratinjau / Pilih Cepat Bulan</span>
+            </button>
 
             <button
               type="button"
@@ -623,6 +668,164 @@ _Salam, PMO: ${project.pmoLead}_`;
           </div>
         </div>
       </div>
+
+      {/* MODAL: PRATINJAU & PILIH CEPAT BULAN (12-MONTH CALENDAR OVERVIEW) */}
+      {showMonthPickerModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full my-auto p-5 sm:p-6 space-y-4 border border-slate-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700">
+                  <Calendar className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-bold text-slate-900">
+                    Pratinjau & Pilih Cepat Bulan Kalender
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Pilih tahun dan klik bulan yang ingin langsung ditinjau (misal: <strong>November 2025</strong>).
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMonthPickerModal(false)}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                title="Tutup"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Year Switcher Bar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPickerYear((prev) => prev - 1)}
+                  className="p-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer shadow-2xs"
+                  title="Tahun Sebelumnya"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-base font-mono font-bold text-slate-900 px-3 py-0.5 bg-white border border-slate-300 rounded-lg shadow-2xs min-w-[70px] text-center">
+                  {pickerYear}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPickerYear((prev) => prev + 1)}
+                  className="p-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer shadow-2xs"
+                  title="Tahun Berikutnya"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Quick Year Chips */}
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className="text-[10px] text-slate-500 font-semibold mr-1">Tahun Cepat:</span>
+                {[2024, 2025, 2026, 2027].map((yr) => (
+                  <button
+                    key={yr}
+                    type="button"
+                    onClick={() => setPickerYear(yr)}
+                    className={`px-2.5 py-1 text-xs font-mono font-bold rounded-md transition-colors cursor-pointer ${
+                      pickerYear === yr
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-200'
+                    }`}
+                  >
+                    {yr}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 12-Month Calendar Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 pt-1">
+              {monthNames.map((mName, mIdx) => {
+                const isCurrentActive = currentYear === pickerYear && currentMonth === mIdx;
+                const isRealTodayMonth = realYear === pickerYear && realMonth === mIdx;
+
+                // Count total reports recorded for this month
+                const monthPrefix = `${pickerYear}-${String(mIdx + 1).padStart(2, '0')}`;
+                const reportsInMonth = reports.filter((r) => r.reportDate.startsWith(monthPrefix));
+                const approvedCount = reportsInMonth.filter((r) => r.approvalStatus === 'approved').length;
+
+                return (
+                  <button
+                    key={mName}
+                    type="button"
+                    onClick={() => {
+                      onMonthChange(pickerYear, mIdx);
+                      setShowMonthPickerModal(false);
+                    }}
+                    className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between min-h-[78px] cursor-pointer group ${
+                      isCurrentActive
+                        ? 'bg-blue-50/90 border-blue-500 ring-2 ring-blue-500/30 shadow-xs'
+                        : 'bg-white hover:bg-slate-50 border-slate-200 hover:border-blue-300 hover:shadow-xs'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className={`text-xs font-bold leading-tight ${
+                        isCurrentActive ? 'text-blue-900 font-extrabold' : 'text-slate-800 group-hover:text-blue-700'
+                      }`}>
+                        {mName}
+                      </span>
+                      {isCurrentActive && (
+                        <span className="w-2 h-2 rounded-full bg-blue-600" />
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-1 mt-2 text-[10px]">
+                      <span className="font-mono text-slate-500">
+                        {pickerYear}
+                      </span>
+
+                      {isRealTodayMonth ? (
+                        <span className="font-bold text-[9px] px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded">
+                          Bulan Ini
+                        </span>
+                      ) : reportsInMonth.length > 0 ? (
+                        <span className="font-mono text-[9px] px-1.5 py-0.2 bg-slate-100 text-slate-700 rounded font-semibold">
+                          {reportsInMonth.length} Laporan
+                        </span>
+                      ) : (
+                        <span className="text-[9px] text-slate-400">
+                          -
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  onMonthChange(realYear, realMonth);
+                  setShowMonthPickerModal(false);
+                }}
+                className="text-emerald-700 hover:text-emerald-800 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <span>→ Lompat ke Bulan Ini ({monthNames[realMonth]} {realYear})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowMonthPickerModal(false)}
+                className="px-4 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold cursor-pointer transition-colors"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

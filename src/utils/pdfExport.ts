@@ -251,7 +251,7 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
   doc.setFontSize(6.5);
   doc.text('PR/ PO ID :', leftX + 1.5, y + 3.2);
   doc.setFont('helvetica', 'normal');
-  doc.text(report.nomorBpmpo || report.reportNumber || 'TKCMPO - 2505010', leftX + colLblW + 2, y + 3.2);
+  doc.text(report.nomorBpmpo || project.code || report.reportNumber || '', leftX + colLblW + 2, y + 3.2);
 
   doc.setFont('helvetica', 'bold');
   doc.text('Tanggal Pelaksanaan :', leftX + colLblW + 63.5, y + 3.2);
@@ -304,9 +304,11 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(5.5);
-  const notesContent = report.notes || report.generalNotes || report.weather?.delayReason || 'Pekerjaan dilaksanakan sesuai dengan jadwal dan instruksi pengawas lapangan.';
-  const splitNotes = doc.splitTextToSize(notesContent, notesW - 4);
-  doc.text(splitNotes.slice(0, 3), leftX + 2, y + 7.5);
+  const notesContent = report.notes || report.generalNotes || '';
+  if (notesContent) {
+    const splitNotes = doc.splitTextToSize(notesContent, notesW - 4);
+    doc.text(splitNotes.slice(0, 3), leftX + 2, y + 7.5);
+  }
 
   // Right side: Attendees Table (NAMA, JABATAN / INSTANSI, TANDA TANGAN)
   doc.setFillColor(245, 245, 245);
@@ -405,7 +407,8 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
       doc.setFontSize(5.5);
       doc.text(String(i + 1), tkX + 3, curY + 2.7, { align: 'center' });
       doc.text(mp.trade.substring(0, 22), tkX + 7.5, curY + 2.7);
-      doc.text(String(mp.count), tkX + 45, curY + 2.7, { align: 'center' });
+      const mpCountStr = mp.count && Number(mp.count) > 0 ? String(mp.count) : '';
+      doc.text(mpCountStr, tkX + 45, curY + 2.7, { align: 'center' });
     }
 
     // Peralatan (Columns: Nama Peralatan, Jumlah Unit, Keterangan)
@@ -417,7 +420,8 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(5.5);
       doc.text(eq.equipmentName.substring(0, 26), eqX + 1.5, curY + 2.7);
-      doc.text(String(eq.count ?? 0), eqX + 53, curY + 2.7, { align: 'center' });
+      const eqCountStr = eq.count && Number(eq.count) > 0 ? String(eq.count) : '';
+      doc.text(eqCountStr, eqX + 53, curY + 2.7, { align: 'center' });
       const eqStatusText = !eq.status ? '-' : eq.status;
       doc.text(eqStatusText.substring(0, 15), eqX + 61.5, curY + 2.7);
     }
@@ -525,7 +529,8 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
       doc.text(lKode, leftX + 5.5, curY + 2.7, { align: 'center' });
       doc.text(lItem.deskripsi.substring(0, 42), leftX + 12.5, curY + 2.7);
       doc.text(lItem.satuan, leftX + 76, curY + 2.7, { align: 'center' });
-      doc.text(String(lItem.install), leftX + 88.5, curY + 2.7, { align: 'center' });
+      const lInstall = lItem.install !== undefined && lItem.install !== null && lItem.install !== 0 && lItem.install !== '0' && (lItem.install as any) !== '' ? String(lItem.install) : '';
+      doc.text(lInstall, leftX + 88.5, curY + 2.7, { align: 'center' });
     } else {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(5.5);
@@ -551,7 +556,8 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
       doc.text(rKode, leftX + halfTableW + 5.5, curY + 2.7, { align: 'center' });
       doc.text(rItem.deskripsi.substring(0, 42), leftX + halfTableW + 12.5, curY + 2.7);
       doc.text(rItem.satuan, leftX + halfTableW + 76, curY + 2.7, { align: 'center' });
-      doc.text(String(rItem.install), leftX + halfTableW + 88.5, curY + 2.7, { align: 'center' });
+      const rInstall = rItem.install !== undefined && rItem.install !== null && rItem.install !== 0 && rItem.install !== '0' && (rItem.install as any) !== '' ? String(rItem.install) : '';
+      doc.text(rInstall, leftX + halfTableW + 88.5, curY + 2.7, { align: 'center' });
     } else {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(5.5);
@@ -629,7 +635,8 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
       doc.text(lKode, leftX + 5.5, curY + 2.7, { align: 'center' });
       doc.text(lItem.jenisMaterial.substring(0, 42), leftX + 12.5, curY + 2.7);
       doc.text(lItem.satuan, leftX + 76, curY + 2.7, { align: 'center' });
-      doc.text(String(lItem.install), leftX + 88.5, curY + 2.7, { align: 'center' });
+      const lInstall = lItem.install !== undefined && lItem.install !== null && lItem.install !== 0 && lItem.install !== '0' && (lItem.install as any) !== '' ? String(lItem.install) : '';
+      doc.text(lInstall, leftX + 88.5, curY + 2.7, { align: 'center' });
     } else {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(5.5);
@@ -655,7 +662,8 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
       doc.text(rKode, leftX + halfTableW + 5.5, curY + 2.7, { align: 'center' });
       doc.text(rItem.jenisMaterial.substring(0, 42), leftX + halfTableW + 12.5, curY + 2.7);
       doc.text(rItem.satuan, leftX + halfTableW + 76, curY + 2.7, { align: 'center' });
-      doc.text(String(rItem.install), leftX + halfTableW + 88.5, curY + 2.7, { align: 'center' });
+      const rInstall = rItem.install !== undefined && rItem.install !== null && rItem.install !== 0 && rItem.install !== '0' && (rItem.install as any) !== '' ? String(rItem.install) : '';
+      doc.text(rInstall, leftX + halfTableW + 88.5, curY + 2.7, { align: 'center' });
     } else {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(5.5);

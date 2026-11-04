@@ -43,6 +43,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
   const [formData, setFormData] = useState<DailyReport>(() => {
     const initialized: DailyReport = {
       ...report,
+      nomorBpmpo: report.nomorBpmpo || project.code || '',
       docCode: report.docCode || 'AAA/CONS/FM-014 Rev01',
       docEffectiveDate: report.docEffectiveDate || '14 Juli 2025',
       docFooterCode: report.docFooterCode || 'Daily Report-P2-ND000-JDU-09',
@@ -184,10 +185,10 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       const copy = [...(prev.boqItems || [])];
       if (!copy[rowIdx]) return prev;
       const updated = { ...copy[rowIdx] };
-      if (colIdx === 0) updated.kode = value === '' ? '0' : value;
+      if (colIdx === 0) updated.kode = value;
       else if (colIdx === 1) updated.deskripsi = value;
       else if (colIdx === 2) updated.satuan = value;
-      else if (colIdx === 3) updated.install = value;
+      else if (colIdx === 3) updated.install = value === '' ? '' : value;
       copy[rowIdx] = updated;
       return { ...prev, boqItems: copy };
     });
@@ -198,10 +199,10 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       const copy = [...(prev.bomItems || [])];
       if (!copy[rowIdx]) return prev;
       const updated = { ...copy[rowIdx] };
-      if (colIdx === 0) updated.kode = value === '' ? '0' : value;
+      if (colIdx === 0) updated.kode = value;
       else if (colIdx === 1) updated.jenisMaterial = value;
       else if (colIdx === 2) updated.satuan = value;
-      else if (colIdx === 3) updated.install = value;
+      else if (colIdx === 3) updated.install = value === '' ? '' : value;
       copy[rowIdx] = updated;
       return { ...prev, bomItems: copy };
     });
@@ -213,7 +214,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       if (!copy[rowIdx]) return prev;
       const updated = { ...copy[rowIdx] };
       if (colIdx === 0) updated.trade = value;
-      else if (colIdx === 1) updated.count = value === '' ? 0 : (isNaN(parseInt(value, 10)) ? 0 : parseInt(value, 10));
+      else if (colIdx === 1) updated.count = value === '' ? ('' as any) : (isNaN(parseInt(value, 10)) ? '' as any : parseInt(value, 10));
       copy[rowIdx] = updated;
       return { ...prev, manpower: copy };
     });
@@ -225,7 +226,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       if (!copy[rowIdx]) return prev;
       const updated = { ...copy[rowIdx] };
       if (colIdx === 0) updated.equipmentName = value;
-      else if (colIdx === 1) updated.count = value === '' ? 0 : (isNaN(parseInt(value, 10)) ? 0 : parseInt(value, 10));
+      else if (colIdx === 1) updated.count = value === '' ? ('' as any) : (isNaN(parseInt(value, 10)) ? '' as any : parseInt(value, 10));
       else if (colIdx === 2) updated.status = value;
       copy[rowIdx] = updated;
       return { ...prev, equipment: copy };
@@ -886,16 +887,13 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
 
   // Helper to add empty rows to BOQ
   const handleAddBoqRows = (count: number = 1) => {
-    const newItems: BoqItem[] = Array.from({ length: count }).map((_, i) => {
-      const idx = (formData.boqItems?.length || 0) + i + 1;
-      return {
-        id: `boq-${Date.now()}-${i}`,
-        kode: '0',
-        deskripsi: '',
-        satuan: 'm',
-        install: 0,
-      };
-    });
+    const newItems: BoqItem[] = Array.from({ length: count }).map((_, i) => ({
+      id: `boq-${Date.now()}-${i}`,
+      kode: '',
+      deskripsi: '',
+      satuan: 'm',
+      install: '',
+    }));
     setFormData((prev) => ({
       ...prev,
       boqItems: [...(prev.boqItems || []), ...newItems],
@@ -906,10 +904,10 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
   const handleAddBomRows = (count: number = 1) => {
     const newItems: BomItem[] = Array.from({ length: count }).map((_, i) => ({
       id: `bom-${Date.now()}-${i}`,
-      kode: '0',
+      kode: '',
       jenisMaterial: '',
       satuan: 'unit',
-      install: 0,
+      install: '',
     }));
     setFormData((prev) => ({
       ...prev,
@@ -922,7 +920,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
     const newItems: ManpowerEntry[] = Array.from({ length: count }).map((_, i) => ({
       id: `mp-${Date.now()}-${i}`,
       trade: '',
-      count: 0,
+      count: '' as any,
       hoursWorked: 0,
     }));
     setFormData((prev) => ({
@@ -936,7 +934,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
     const newItems: EquipmentEntry[] = Array.from({ length: count }).map((_, i) => ({
       id: `eq-${Date.now()}-${i}`,
       equipmentName: '',
-      count: 0,
+      count: '' as any,
       operationalHours: 0,
       status: '',
     }));
@@ -2331,8 +2329,8 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                               type="text"
                               inputMode="numeric"
                               id={`eq-cell-${idx}-1`}
-                              value={eq.count !== undefined && eq.count !== null ? eq.count : ''}
-                              placeholder="0"
+                              value={eq.count !== undefined && eq.count !== null && eq.count !== 0 && (eq.count as any) !== '0' ? eq.count : ''}
+                              placeholder=""
                               onDragStart={(e) => e.preventDefault()}
                               onPaste={(e) => handleEqCellPaste(e, idx)}
                               onMouseDown={(e) => {
@@ -3022,8 +3020,8 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                               type="text"
                               inputMode="numeric"
                               id={`boq-cell-${idx}-3`}
-                              value={b.install ?? 0}
-                              placeholder="0"
+                              value={b.install !== undefined && b.install !== null && b.install !== 0 && b.install !== '0' ? b.install : ''}
+                              placeholder=""
                               onDragStart={(e) => e.preventDefault()}
                               onPaste={(e) => handleBoqCellPaste(e, idx)}
                               onMouseDown={(e) => {
@@ -3535,8 +3533,8 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                               type="text"
                               inputMode="numeric"
                               id={`bom-cell-${idx}-3`}
-                              value={m.install ?? 0}
-                              placeholder="0"
+                              value={m.install !== undefined && m.install !== null && m.install !== 0 && m.install !== '0' ? m.install : ''}
+                              placeholder=""
                               onDragStart={(e) => e.preventDefault()}
                               onPaste={(e) => handleBomCellPaste(e, idx)}
                               onMouseDown={(e) => {
@@ -3685,6 +3683,17 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
 
                   <div className="space-y-3 text-xs">
                     <div>
+                      <label className="block font-semibold text-slate-700 mb-1">PR/ PO ID (Sesuai PO Awal):</label>
+                      <input
+                        type="text"
+                        value={formData.nomorBpmpo ?? project.code ?? ''}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, nomorBpmpo: e.target.value }))}
+                        className="w-full px-3 py-1.5 border border-slate-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-slate-900 bg-white font-mono font-bold text-slate-900"
+                        placeholder={project.code || 'Contoh: TKCMPO - 2505010'}
+                      />
+                      <p className="text-[10px] text-slate-400 mt-0.5">Otomatis mengikuti PR/PO ID yang dimasukkan di awal proyek, dapat disesuaikan jika perlu.</p>
+                    </div>
+                    <div>
                       <label className="block font-semibold text-slate-700 mb-1">Nama Paket Pekerjaan:</label>
                       <input
                         type="text"
@@ -3719,10 +3728,10 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                         rows={3}
                         value={formData.notes ?? formData.generalNotes ?? ''}
                         onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value, generalNotes: e.target.value }))}
-                        placeholder="Pekerjaan dilaksanakan sesuai dengan jadwal dan instruksi pengawas lapangan."
+                        placeholder="Kosongkan jika tidak ada catatan khusus hari ini..."
                         className="w-full px-3 py-2 border border-slate-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-slate-900 bg-white"
                       />
-                      <p className="text-[10px] text-slate-400 mt-0.5">Catatan ini akan tampil pada kotak Catatan di sebelah daftar hadir dokumen cetak.</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Catatan ini akan tampil pada kotak Catatan dokumen cetak. Jika dikosongkan, kotak akan tetap bersih tanpa teks.</p>
                     </div>
                   </div>
                 </div>
