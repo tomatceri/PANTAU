@@ -43,15 +43,29 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
   const [formData, setFormData] = useState<DailyReport>(() => {
     const initialized: DailyReport = {
       ...report,
+      notes: report.notes || report.generalNotes || '',
+      generalNotes: report.notes || report.generalNotes || '',
       nomorBpmpo: report.nomorBpmpo || project.code || '',
       docCode: report.docCode || 'AAA/CONS/FM-014 Rev01',
       docEffectiveDate: report.docEffectiveDate || '14 Juli 2025',
       docFooterCode: report.docFooterCode || 'Daily Report-P2-ND000-JDU-09',
       hourlyWeather: report.hourlyWeather || createDefault24hWeather('empty'),
-      boqItems: report.boqItems || [],
-      bomItems: report.bomItems || [],
-      manpower: report.manpower || [],
-      equipment: report.equipment || [],
+      boqItems: (report.boqItems || []).map((b) => ({
+        ...b,
+        install: b.install === 0 || b.install === '0' || !b.install ? '' : b.install,
+      })),
+      bomItems: (report.bomItems || []).map((b) => ({
+        ...b,
+        install: b.install === 0 || b.install === '0' || !b.install ? '' : b.install,
+      })),
+      manpower: (report.manpower || []).map((m) => ({
+        ...m,
+        count: m.count === 0 || (m.count as any) === '0' || !m.count ? ('' as any) : m.count,
+      })),
+      equipment: (report.equipment || []).map((e) => ({
+        ...e,
+        count: e.count === 0 || (e.count as any) === '0' || !e.count ? ('' as any) : e.count,
+      })),
       attendees: report.attendees && report.attendees.length > 0 ? report.attendees : DEFAULT_ATTENDEES,
       contractorSignatory: report.contractorSignatory || DEFAULT_SIGNATORIES.contractor,
       consultantSignatory: report.consultantSignatory || DEFAULT_SIGNATORIES.consultant,
@@ -188,7 +202,10 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       if (colIdx === 0) updated.kode = value;
       else if (colIdx === 1) updated.deskripsi = value;
       else if (colIdx === 2) updated.satuan = value;
-      else if (colIdx === 3) updated.install = value === '' ? '' : value;
+      else if (colIdx === 3) {
+        const strVal = String(value ?? '').trim();
+        updated.install = strVal === '' || strVal === '0' ? '' : strVal;
+      }
       copy[rowIdx] = updated;
       return { ...prev, boqItems: copy };
     });
@@ -202,7 +219,10 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       if (colIdx === 0) updated.kode = value;
       else if (colIdx === 1) updated.jenisMaterial = value;
       else if (colIdx === 2) updated.satuan = value;
-      else if (colIdx === 3) updated.install = value === '' ? '' : value;
+      else if (colIdx === 3) {
+        const strVal = String(value ?? '').trim();
+        updated.install = strVal === '' || strVal === '0' ? '' : strVal;
+      }
       copy[rowIdx] = updated;
       return { ...prev, bomItems: copy };
     });
@@ -214,7 +234,15 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       if (!copy[rowIdx]) return prev;
       const updated = { ...copy[rowIdx] };
       if (colIdx === 0) updated.trade = value;
-      else if (colIdx === 1) updated.count = value === '' ? ('' as any) : (isNaN(parseInt(value, 10)) ? '' as any : parseInt(value, 10));
+      else if (colIdx === 1) {
+        const strVal = String(value ?? '').trim();
+        if (strVal === '' || strVal === '0') {
+          updated.count = '' as any;
+        } else {
+          const num = parseInt(strVal, 10);
+          updated.count = isNaN(num) || num <= 0 ? ('' as any) : num;
+        }
+      }
       copy[rowIdx] = updated;
       return { ...prev, manpower: copy };
     });
@@ -226,7 +254,15 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
       if (!copy[rowIdx]) return prev;
       const updated = { ...copy[rowIdx] };
       if (colIdx === 0) updated.equipmentName = value;
-      else if (colIdx === 1) updated.count = value === '' ? ('' as any) : (isNaN(parseInt(value, 10)) ? '' as any : parseInt(value, 10));
+      else if (colIdx === 1) {
+        const strVal = String(value ?? '').trim();
+        if (strVal === '' || strVal === '0') {
+          updated.count = '' as any;
+        } else {
+          const num = parseInt(strVal, 10);
+          updated.count = isNaN(num) || num <= 0 ? ('' as any) : num;
+        }
+      }
       else if (colIdx === 2) updated.status = value;
       copy[rowIdx] = updated;
       return { ...prev, equipment: copy };
@@ -341,7 +377,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
           if (c === 0) item.kode = '';
           if (c === 1) item.deskripsi = '';
           if (c === 2) item.satuan = '';
-          if (c === 3) item.install = 0;
+          if (c === 3) item.install = '';
         }
         current[r] = item;
       }
@@ -383,7 +419,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
           if (c === 0) item.kode = '';
           if (c === 1) item.jenisMaterial = '';
           if (c === 2) item.satuan = '';
-          if (c === 3) item.install = 0;
+          if (c === 3) item.install = '';
         }
         current[r] = item;
       }
@@ -423,7 +459,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
         const item = { ...current[r] };
         for (let c = minC; c <= maxC; c++) {
           if (c === 0) item.trade = '';
-          if (c === 1) item.count = 0;
+          if (c === 1) item.count = '' as any;
         }
         current[r] = item;
       }
@@ -463,7 +499,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
         const item = { ...current[r] };
         for (let c = minC; c <= maxC; c++) {
           if (c === 0) item.equipmentName = '';
-          if (c === 1) item.count = 0;
+          if (c === 1) item.count = '' as any;
           if (c === 2) item.status = '';
         }
         current[r] = item;
@@ -1922,8 +1958,8 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                               type="text"
                               inputMode="numeric"
                               id={`mp-cell-${idx}-1`}
-                              value={m.count !== undefined && m.count !== null ? m.count : ''}
-                              placeholder="0"
+                              value={!m.count || m.count === 0 || (m.count as any) === '0' ? '' : m.count}
+                              placeholder=""
                               onDragStart={(e) => e.preventDefault()}
                               onPaste={(e) => handleMpCellPaste(e, idx)}
                               onMouseDown={(e) => {
@@ -2329,7 +2365,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                               type="text"
                               inputMode="numeric"
                               id={`eq-cell-${idx}-1`}
-                              value={eq.count !== undefined && eq.count !== null && eq.count !== 0 && (eq.count as any) !== '0' ? eq.count : ''}
+                              value={!eq.count || eq.count === 0 || (eq.count as any) === '0' ? '' : eq.count}
                               placeholder=""
                               onDragStart={(e) => e.preventDefault()}
                               onPaste={(e) => handleEqCellPaste(e, idx)}
@@ -3411,7 +3447,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                                 }
                               }}
                               onKeyDown={(e) => handleGridKeyDown(e, 'bom', idx, 0, 4)}
-                              onChange={(e) => updateBomCell(idx, 0, e.target.value === '' ? '0' : e.target.value)}
+                              onChange={(e) => updateBomCell(idx, 0, e.target.value)}
                               className={`w-full h-8 px-2 text-xs font-mono font-bold border-none focus:outline-none bg-transparent focus:bg-white focus:ring-2 focus:ring-emerald-600 focus:z-10 text-slate-900 ${
                                 bomIsDragging ? 'pointer-events-none select-none' : ''
                               }`}
@@ -4344,24 +4380,24 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                         <tr key={item.id || pIdx} className="hover:bg-slate-50">
                           {excelModalTarget === 'boq' && (
                             <>
-                              <td className="py-1 px-2 font-bold text-slate-800">{item.kode || '-'}</td>
-                              <td className="py-1 px-2 font-sans truncate max-w-[220px]">{item.title || '-'}</td>
-                              <td className="py-1 px-2">{item.satuan || '-'}</td>
-                              <td className="py-1 px-2 text-center font-bold text-emerald-800">{item.install || '-'}</td>
+                              <td className="py-1 px-2 font-bold text-slate-800">{item.kode || ''}</td>
+                              <td className="py-1 px-2 font-sans truncate max-w-[220px]">{item.title || ''}</td>
+                              <td className="py-1 px-2">{item.satuan || ''}</td>
+                              <td className="py-1 px-2 text-center font-bold text-emerald-800">{item.install || ''}</td>
                             </>
                           )}
                           {excelModalTarget === 'bom' && (
                             <>
-                              <td className="py-1 px-2 font-bold text-slate-800">{item.kode || '-'}</td>
-                              <td className="py-1 px-2 font-sans truncate max-w-[220px]">{item.title || '-'}</td>
-                              <td className="py-1 px-2">{item.satuan || '-'}</td>
-                              <td className="py-1 px-2 text-center font-bold text-emerald-800">{item.install || '-'}</td>
+                              <td className="py-1 px-2 font-bold text-slate-800">{item.kode || ''}</td>
+                              <td className="py-1 px-2 font-sans truncate max-w-[220px]">{item.title || ''}</td>
+                              <td className="py-1 px-2">{item.satuan || ''}</td>
+                              <td className="py-1 px-2 text-center font-bold text-emerald-800">{item.install || ''}</td>
                             </>
                           )}
                           {excelModalTarget === 'manpower' && (
                             <>
                               <td className="py-1 px-2 font-bold text-slate-500">{pIdx + 1}</td>
-                              <td className="py-1 px-2 font-sans font-semibold text-slate-800 truncate max-w-[220px]">{item.title || item.kode || '-'}</td>
+                              <td className="py-1 px-2 font-sans font-semibold text-slate-800 truncate max-w-[220px]">{item.title || item.kode || ''}</td>
                               <td className="py-1 px-2 text-center font-bold text-emerald-800">{parseInt(item.install, 10) || parseInt(item.satuan, 10) || 1} Org</td>
                               <td className="py-1 px-2 text-center text-slate-600">8 Jam</td>
                             </>
@@ -4369,7 +4405,7 @@ export const DailyReportForm: React.FC<DailyReportFormProps> = ({
                           {excelModalTarget === 'equipment' && (
                             <>
                               <td className="py-1 px-2 font-bold text-slate-500">{pIdx + 1}</td>
-                              <td className="py-1 px-2 font-sans font-semibold text-slate-800 truncate max-w-[220px]">{item.title || item.kode || '-'}</td>
+                              <td className="py-1 px-2 font-sans font-semibold text-slate-800 truncate max-w-[220px]">{item.title || item.kode || ''}</td>
                               <td className="py-1 px-2 text-center font-bold text-emerald-800">{parseInt(item.install, 10) || parseInt(item.satuan, 10) || 1} Unit</td>
                               <td className="py-1 px-2 text-center text-emerald-700 font-semibold">Operating</td>
                             </>

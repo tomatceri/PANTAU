@@ -236,9 +236,9 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                   ))}
                   {Array.from({ length: Math.max(0, 12 - manpower.length) }).map((_, i) => (
                     <tr key={`mp-empty-${i}`} className="h-[18px]">
-                      <td className="border-r border-black text-center px-1 font-mono text-[8px]">{manpower.length + i + 1}</td>
-                      <td className="border-r border-black px-1.5 text-slate-300">-</td>
-                      <td className="text-center font-mono text-slate-300">-</td>
+                      <td className="border-r border-black text-center px-1 font-mono text-[8px]"></td>
+                      <td className="border-r border-black px-1.5"></td>
+                      <td className="text-center font-mono"></td>
                     </tr>
                   ))}
                   <tr className="bg-slate-50 font-bold border-t border-black h-[22px]">
@@ -268,14 +268,14 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                     <tr key={eq.id || idx} className="h-[18px]">
                       <td className="border-r border-black px-1.5 truncate font-medium">{eq.equipmentName}</td>
                       <td className="border-r border-black text-center font-mono px-0.5">{formatQty(eq.count)}</td>
-                      <td className="px-1 text-[8px] truncate">{eq.status || '-'}</td>
+                      <td className="px-1 text-[8px] truncate">{eq.status || ''}</td>
                     </tr>
                   ))}
                   {Array.from({ length: Math.max(0, 12 - equipment.length) }).map((_, i) => (
                     <tr key={`eq-empty-${i}`} className="h-[18px]">
-                      <td className="border-r border-black px-1.5 text-slate-300">-</td>
-                      <td className="border-r border-black text-center font-mono text-slate-300">-</td>
-                      <td className="px-1 text-slate-300">-</td>
+                      <td className="border-r border-black px-1.5"></td>
+                      <td className="border-r border-black text-center font-mono"></td>
+                      <td className="px-1"></td>
                     </tr>
                   ))}
                   <tr className="bg-slate-50 font-bold border-t border-black h-[22px]">
@@ -313,13 +313,13 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                           {mHour}
                         </td>
                         <td className={`border-r border-black text-center px-1 w-5 ${getWeatherBadgeClass(mCode)}`}>
-                          {mCode || '-'}
+                          {mCode && mCode !== '-' ? mCode : ''}
                         </td>
                         <td className="border-r border-black text-center px-0.5 bg-slate-50 text-[7.5px] w-8">
                           {aHour}
                         </td>
                         <td className={`border-r border-black text-center px-1 w-5 ${getWeatherBadgeClass(aCode)}`}>
-                          {aCode || '-'}
+                          {aCode && aCode !== '-' ? aCode : ''}
                         </td>
                         {/* Legend on the right side on specific rows */}
                         {idx === 0 && (
@@ -386,10 +386,10 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                 ))}
                 {Array.from({ length: Math.max(0, 7 - leftBoq.length) }).map((_, i) => (
                   <tr key={`lboq-empty-${i}`} className="h-5">
-                    <td className="border-r border-black text-center font-mono text-slate-300">-</td>
-                    <td className="border-r border-black px-1.5 text-slate-300">-</td>
-                    <td className="border-r border-black text-center text-slate-300">-</td>
-                    <td className="text-center font-mono text-slate-300">-</td>
+                    <td className="border-r border-black text-center font-mono px-1"></td>
+                    <td className="border-r border-black px-1.5"></td>
+                    <td className="border-r border-black text-center px-1"></td>
+                    <td className="text-center font-mono px-1.5"></td>
                   </tr>
                 ))}
               </tbody>
@@ -416,10 +416,10 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                 ))}
                 {Array.from({ length: Math.max(0, 7 - rightBoq.length) }).map((_, i) => (
                   <tr key={`rboq-empty-${i}`} className="h-5">
-                    <td className="border-r border-black text-center font-mono text-slate-300">-</td>
-                    <td className="border-r border-black px-1.5 text-slate-300">-</td>
-                    <td className="border-r border-black text-center text-slate-300">-</td>
-                    <td className="text-center font-mono text-slate-300">-</td>
+                    <td className="border-r border-black text-center font-mono px-1"></td>
+                    <td className="border-r border-black px-1.5"></td>
+                    <td className="border-r border-black text-center px-1"></td>
+                    <td className="text-center font-mono px-1.5"></td>
                   </tr>
                 ))}
               </tbody>
@@ -454,10 +454,10 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                 ))}
                 {Array.from({ length: Math.max(0, 4 - leftBom.length) }).map((_, i) => (
                   <tr key={`lbom-empty-${i}`} className="h-5">
-                    <td className="border-r border-black text-center font-mono text-slate-300">-</td>
-                    <td className="border-r border-black px-1.5 text-slate-300">-</td>
-                    <td className="border-r border-black text-center text-slate-300">-</td>
-                    <td className="text-center font-mono text-slate-300">-</td>
+                    <td className="border-r border-black text-center font-mono px-1"></td>
+                    <td className="border-r border-black px-1.5"></td>
+                    <td className="border-r border-black text-center px-1"></td>
+                    <td className="text-center font-mono px-1.5"></td>
                   </tr>
                 ))}
               </tbody>
@@ -484,10 +484,10 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                 ))}
                 {Array.from({ length: Math.max(0, 4 - rightBom.length) }).map((_, i) => (
                   <tr key={`rbom-empty-${i}`} className="h-5">
-                    <td className="border-r border-black text-center font-mono text-slate-300">-</td>
-                    <td className="border-r border-black px-1.5 text-slate-300">-</td>
-                    <td className="border-r border-black text-center text-slate-300">-</td>
-                    <td className="text-center font-mono text-slate-300">-</td>
+                    <td className="border-r border-black text-center font-mono px-1"></td>
+                    <td className="border-r border-black px-1.5"></td>
+                    <td className="border-r border-black text-center px-1"></td>
+                    <td className="text-center font-mono px-1.5"></td>
                   </tr>
                 ))}
               </tbody>

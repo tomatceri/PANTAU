@@ -422,8 +422,10 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
       doc.text(eq.equipmentName.substring(0, 26), eqX + 1.5, curY + 2.7);
       const eqCountStr = eq.count && Number(eq.count) > 0 ? String(eq.count) : '';
       doc.text(eqCountStr, eqX + 53, curY + 2.7, { align: 'center' });
-      const eqStatusText = !eq.status ? '-' : eq.status;
-      doc.text(eqStatusText.substring(0, 15), eqX + 61.5, curY + 2.7);
+      const eqStatusText = eq.status ? eq.status.substring(0, 15) : '';
+      if (eqStatusText) {
+        doc.text(eqStatusText, eqX + 61.5, curY + 2.7);
+      }
     }
 
     // Cuaca (Morning & Afternoon)
@@ -434,33 +436,36 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
 
     const mH = morningHours[i];
     const aH = afternoonHours[i];
-    const mC = hourlyWeather[mH] || '';
-    const aC = hourlyWeather[aH] || '';
+    const mC = (hourlyWeather[mH] || '').trim();
+    const aC = (hourlyWeather[aH] || '').trim();
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(5);
     doc.text(mH, cwX + 1.5, curY + 2.7);
     doc.setFont('helvetica', 'bold');
-    doc.text(mC || '-', cwX + 17.5, curY + 2.7, { align: 'center' });
+    if (mC && mC !== '-') {
+      doc.text(mC, cwX + 17.5, curY + 2.7, { align: 'center' });
+    }
 
     doc.setFont('helvetica', 'normal');
     doc.text(aH, cwX + 23.5, curY + 2.7);
     doc.setFont('helvetica', 'bold');
-    doc.text(aC || '-', cwX + 39.5, curY + 2.7, { align: 'center' });
+    if (aC && aC !== '-') {
+      doc.text(aC, cwX + 39.5, curY + 2.7, { align: 'center' });
+    }
   }
 
   // Draw legend box on the right side of Cuaca
   doc.rect(cwX + 44, y, 14, rowH * 12);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(5);
-  doc.text('(-) = Kosong', cwX + 45, y + 5);
-  doc.text('C = Cerah', cwX + 45, y + 12);
-  doc.text('M = Mendung', cwX + 45, y + 19);
-  doc.text('G = Gerimis', cwX + 45, y + 26);
-  doc.text('H = Hujan', cwX + 45, y + 33);
+  doc.text('C = Cerah', cwX + 45, y + 6);
+  doc.text('M = Mendung', cwX + 45, y + 14);
+  doc.text('G = Gerimis', cwX + 45, y + 22);
+  doc.text('H = Hujan', cwX + 45, y + 30);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(4.5);
-  doc.text(`DT: ${report.weather?.downtimeHours || 0} Jam`, cwX + 45, y + 41);
+  doc.text(`DT: ${report.weather?.downtimeHours || 0} Jam`, cwX + 45, y + 39);
 
   y += rowH * 12;
 
@@ -526,19 +531,11 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
       doc.setFontSize(5.5);
       doc.setTextColor(0, 0, 0);
       const lKode = lItem.kode && lItem.kode !== '0' ? lItem.kode : '';
-      doc.text(lKode, leftX + 5.5, curY + 2.7, { align: 'center' });
-      doc.text(lItem.deskripsi.substring(0, 42), leftX + 12.5, curY + 2.7);
-      doc.text(lItem.satuan, leftX + 76, curY + 2.7, { align: 'center' });
+      if (lKode) doc.text(lKode, leftX + 5.5, curY + 2.7, { align: 'center' });
+      if (lItem.deskripsi) doc.text(lItem.deskripsi.substring(0, 42), leftX + 12.5, curY + 2.7);
+      if (lItem.satuan) doc.text(lItem.satuan, leftX + 76, curY + 2.7, { align: 'center' });
       const lInstall = lItem.install !== undefined && lItem.install !== null && lItem.install !== 0 && lItem.install !== '0' && (lItem.install as any) !== '' ? String(lItem.install) : '';
-      doc.text(lInstall, leftX + 88.5, curY + 2.7, { align: 'center' });
-    } else {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(5.5);
-      doc.setTextColor(180, 180, 180);
-      doc.text('-', leftX + 5.5, curY + 2.7, { align: 'center' });
-      doc.text('-', leftX + 12.5, curY + 2.7);
-      doc.text('-', leftX + 76, curY + 2.7, { align: 'center' });
-      doc.text('-', leftX + 88.5, curY + 2.7, { align: 'center' });
+      if (lInstall) doc.text(lInstall, leftX + 88.5, curY + 2.7, { align: 'center' });
     }
 
     // Right BOQ item
@@ -553,19 +550,11 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
       doc.setFontSize(5.5);
       doc.setTextColor(0, 0, 0);
       const rKode = rItem.kode && rItem.kode !== '0' ? rItem.kode : '';
-      doc.text(rKode, leftX + halfTableW + 5.5, curY + 2.7, { align: 'center' });
-      doc.text(rItem.deskripsi.substring(0, 42), leftX + halfTableW + 12.5, curY + 2.7);
-      doc.text(rItem.satuan, leftX + halfTableW + 76, curY + 2.7, { align: 'center' });
+      if (rKode) doc.text(rKode, leftX + halfTableW + 5.5, curY + 2.7, { align: 'center' });
+      if (rItem.deskripsi) doc.text(rItem.deskripsi.substring(0, 42), leftX + halfTableW + 12.5, curY + 2.7);
+      if (rItem.satuan) doc.text(rItem.satuan, leftX + halfTableW + 76, curY + 2.7, { align: 'center' });
       const rInstall = rItem.install !== undefined && rItem.install !== null && rItem.install !== 0 && rItem.install !== '0' && (rItem.install as any) !== '' ? String(rItem.install) : '';
-      doc.text(rInstall, leftX + halfTableW + 88.5, curY + 2.7, { align: 'center' });
-    } else {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(5.5);
-      doc.setTextColor(180, 180, 180);
-      doc.text('-', leftX + halfTableW + 5.5, curY + 2.7, { align: 'center' });
-      doc.text('-', leftX + halfTableW + 12.5, curY + 2.7);
-      doc.text('-', leftX + halfTableW + 76, curY + 2.7, { align: 'center' });
-      doc.text('-', leftX + halfTableW + 88.5, curY + 2.7, { align: 'center' });
+      if (rInstall) doc.text(rInstall, leftX + halfTableW + 88.5, curY + 2.7, { align: 'center' });
     }
   }
 
@@ -632,19 +621,11 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
       doc.setFontSize(5.5);
       doc.setTextColor(0, 0, 0);
       const lKode = lItem.kode && lItem.kode !== '0' ? lItem.kode : '';
-      doc.text(lKode, leftX + 5.5, curY + 2.7, { align: 'center' });
-      doc.text(lItem.jenisMaterial.substring(0, 42), leftX + 12.5, curY + 2.7);
-      doc.text(lItem.satuan, leftX + 76, curY + 2.7, { align: 'center' });
+      if (lKode) doc.text(lKode, leftX + 5.5, curY + 2.7, { align: 'center' });
+      if (lItem.jenisMaterial) doc.text(lItem.jenisMaterial.substring(0, 42), leftX + 12.5, curY + 2.7);
+      if (lItem.satuan) doc.text(lItem.satuan, leftX + 76, curY + 2.7, { align: 'center' });
       const lInstall = lItem.install !== undefined && lItem.install !== null && lItem.install !== 0 && lItem.install !== '0' && (lItem.install as any) !== '' ? String(lItem.install) : '';
-      doc.text(lInstall, leftX + 88.5, curY + 2.7, { align: 'center' });
-    } else {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(5.5);
-      doc.setTextColor(180, 180, 180);
-      doc.text('-', leftX + 5.5, curY + 2.7, { align: 'center' });
-      doc.text('-', leftX + 12.5, curY + 2.7);
-      doc.text('-', leftX + 76, curY + 2.7, { align: 'center' });
-      doc.text('-', leftX + 88.5, curY + 2.7, { align: 'center' });
+      if (lInstall) doc.text(lInstall, leftX + 88.5, curY + 2.7, { align: 'center' });
     }
 
     // Right BOM
@@ -659,19 +640,11 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
       doc.setFontSize(5.5);
       doc.setTextColor(0, 0, 0);
       const rKode = rItem.kode && rItem.kode !== '0' ? rItem.kode : '';
-      doc.text(rKode, leftX + halfTableW + 5.5, curY + 2.7, { align: 'center' });
-      doc.text(rItem.jenisMaterial.substring(0, 42), leftX + halfTableW + 12.5, curY + 2.7);
-      doc.text(rItem.satuan, leftX + halfTableW + 76, curY + 2.7, { align: 'center' });
+      if (rKode) doc.text(rKode, leftX + halfTableW + 5.5, curY + 2.7, { align: 'center' });
+      if (rItem.jenisMaterial) doc.text(rItem.jenisMaterial.substring(0, 42), leftX + halfTableW + 12.5, curY + 2.7);
+      if (rItem.satuan) doc.text(rItem.satuan, leftX + halfTableW + 76, curY + 2.7, { align: 'center' });
       const rInstall = rItem.install !== undefined && rItem.install !== null && rItem.install !== 0 && rItem.install !== '0' && (rItem.install as any) !== '' ? String(rItem.install) : '';
-      doc.text(rInstall, leftX + halfTableW + 88.5, curY + 2.7, { align: 'center' });
-    } else {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(5.5);
-      doc.setTextColor(180, 180, 180);
-      doc.text('-', leftX + halfTableW + 5.5, curY + 2.7, { align: 'center' });
-      doc.text('-', leftX + halfTableW + 12.5, curY + 2.7);
-      doc.text('-', leftX + halfTableW + 76, curY + 2.7, { align: 'center' });
-      doc.text('-', leftX + halfTableW + 88.5, curY + 2.7, { align: 'center' });
+      if (rInstall) doc.text(rInstall, leftX + halfTableW + 88.5, curY + 2.7, { align: 'center' });
     }
   }
 

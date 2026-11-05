@@ -512,6 +512,8 @@ export default function App() {
         activities: [],
         photos: [],
         revisionNotes: [],
+        notes: '',
+        generalNotes: '',
       }
     : selectedProject
     ? currentProjectDailies.find((r) => r.reportDate === todayStr) || currentProjectDailies[0]

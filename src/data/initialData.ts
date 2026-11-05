@@ -57,14 +57,16 @@ export const RAW_INITIAL_DAILY_REPORTS: DailyReport[] = [
       { id: 'eq-7', equipmentName: 'Mesin Bor', count: 1, operationalHours: 0, status: 'Standby' },
     ],
     boqItems: [
-      { id: 'boq-1', kode: 'BQ-1', deskripsi: 'MOS', satuan: 'ls', install: 0 },
-      { id: 'boq-2', kode: 'BQ-2', deskripsi: 'Hanging rod', satuan: 'btg', install: 0 },
-      { id: 'boq-3', kode: 'BQ-3', deskripsi: 'Support atas bawah UNP', satuan: 'btg', install: 0 },
-      { id: 'boq-4', kode: 'BQ-4', deskripsi: 'Support UNP', satuan: 'btg', install: 0 },
+      { id: 'boq-1', kode: 'BQ-1', deskripsi: 'MOS', satuan: 'ls', install: '' },
+      { id: 'boq-2', kode: 'BQ-2', deskripsi: 'Hanging rod', satuan: 'btg', install: '' },
+      { id: 'boq-3', kode: 'BQ-3', deskripsi: 'Support atas bawah UNP', satuan: 'btg', install: '' },
+      { id: 'boq-4', kode: 'BQ-4', deskripsi: 'Support UNP', satuan: 'btg', install: '' },
     ],
     bomItems: [
-      { id: 'bom-1', kode: 'M-01', jenisMaterial: 'Material M-01', satuan: 'unit', install: 0 },
+      { id: 'bom-1', kode: 'M-01', jenisMaterial: 'Material M-01', satuan: 'unit', install: '' },
     ],
+    notes: '',
+    generalNotes: '',
     attendees: [
       { id: 'att-1', nama: 'Adhe Juliawaludin', jabatan: 'Supervisor', instansi: 'PT. BESTINDO PUTRA MANDIRI' },
       { id: 'att-2', nama: 'Anis Sulfuad', jabatan: 'HSE', instansi: 'PT. BESTINDO PUTRA MANDIRI' },

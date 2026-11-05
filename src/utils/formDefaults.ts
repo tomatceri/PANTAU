@@ -8,7 +8,7 @@ export const HOURS_24: string[] = [
 ];
 
 export const WEATHER_LEGEND: { code: HourlyWeatherCode; label: string; desc: string; color: string }[] = [
-  { code: '', label: 'Kosong (-)', desc: 'Tidak ada pencatatan / di luar jam kerja', color: 'bg-white text-slate-500 border-slate-300' },
+  { code: '', label: 'Kosong', desc: 'Tidak ada pencatatan / di luar jam kerja', color: 'bg-white text-slate-500 border-slate-300' },
   { code: 'C', label: 'Cerah', desc: 'Cuaca cerah panas / tanpa hambatan', color: 'bg-amber-100 text-amber-900 border-amber-300' },
   { code: 'M', label: 'Mendung', desc: 'Berawan / mendung tipis', color: 'bg-slate-200 text-slate-800 border-slate-300' },
   { code: 'G', label: 'Gerimis', desc: 'Hujan ringan / gerimis', color: 'bg-blue-100 text-blue-900 border-blue-300' },
@@ -84,7 +84,7 @@ export const DEFAULT_BOQ_ITEMS: BoqItem[] = [
   { id: 'boq-5', kode: '2.02', deskripsi: 'Penyambungan pipa metode Butt Fusion OD 630', satuan: 'joint', install: 5 },
   { id: 'boq-6', kode: '2.03', deskripsi: 'Pemasangan stub end & backing ring DN600', satuan: 'unit', install: 2 },
   { id: 'boq-7', kode: '3.01', deskripsi: 'Urugan tanah kembali & pemadatan lapis per lapis', satuan: 'm³', install: 65 },
-  { id: 'boq-8', kode: '3.02', deskripsi: 'Uji tekan hidrostatis pipa (Hydrotest 10 bar)', satuan: 'm', install: 0 },
+  { id: 'boq-8', kode: '3.02', deskripsi: 'Uji tekan hidrostatis pipa (Hydrotest 10 bar)', satuan: 'm', install: '' },
 ];
 
 export const DEFAULT_BOM_ITEMS: BomItem[] = [
