@@ -241,14 +241,6 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                       <td className="text-center font-mono"></td>
                     </tr>
                   ))}
-                  <tr className="bg-slate-50 font-bold border-t border-black h-[22px]">
-                    <td colSpan={2} className="border-r border-black px-2 py-0.5 text-right uppercase text-[8px]">
-                      Total Tenaga Kerja :
-                    </td>
-                    <td className="text-center font-mono py-0.5 font-bold">
-                      {formatQty(manpower.reduce((acc, cur) => acc + (Number(cur.count) || 0), 0))}
-                    </td>
-                  </tr>
                 </tbody>
               </table>
             </div>
@@ -278,15 +270,6 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                       <td className="px-1"></td>
                     </tr>
                   ))}
-                  <tr className="bg-slate-50 font-bold border-t border-black h-[22px]">
-                    <td className="border-r border-black px-1.5 py-0.5 text-right uppercase text-[8px]">
-                      Total Unit :
-                    </td>
-                    <td className="border-r border-black text-center font-mono py-0.5 font-bold">
-                      {formatQty(equipment.reduce((acc, cur) => acc + (Number(cur.count) || 0), 0))}
-                    </td>
-                    <td className="px-1 text-[8px] text-slate-600 font-normal truncate">Unit Terdata</td>
-                  </tr>
                 </tbody>
               </table>
             </div>
@@ -321,38 +304,23 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
                         <td className={`border-r border-black text-center px-1 w-5 ${getWeatherBadgeClass(aCode)}`}>
                           {aCode && aCode !== '-' ? aCode : ''}
                         </td>
-                        {/* Legend on the right side on specific rows */}
+                        {/* Single unified legend box spanning all 12 rows, matching PDF */}
                         {idx === 0 && (
-                          <td rowSpan={3} className="px-1 align-top text-[7px] font-sans leading-tight bg-slate-50/50">
-                            <strong>C</strong> = Cerah
-                          </td>
-                        )}
-                        {idx === 3 && (
-                          <td rowSpan={3} className="px-1 align-top text-[7px] font-sans leading-tight bg-slate-50/50">
-                            <strong>M</strong> = Mendung
-                          </td>
-                        )}
-                        {idx === 6 && (
-                          <td rowSpan={3} className="px-1 align-top text-[7px] font-sans leading-tight bg-slate-50/50">
-                            <strong>G</strong> = Gerimis
-                          </td>
-                        )}
-                        {idx === 9 && (
-                          <td rowSpan={3} className="px-1 align-top text-[7px] font-sans leading-tight bg-slate-50/50">
-                            <strong className="text-blue-700">H</strong> = Hujan
+                          <td rowSpan={12} className="px-1 py-1.5 align-top text-[7px] font-sans leading-relaxed bg-slate-50/50">
+                            <div className="space-y-1 text-left">
+                              <div><strong>C</strong> = Cerah</div>
+                              <div><strong>M</strong> = Mendung</div>
+                              <div><strong>G</strong> = Gerimis</div>
+                              <div><strong className="text-blue-700">H</strong> = Hujan</div>
+                              <div className="pt-2 text-[6.5px] text-slate-800 font-semibold border-t border-slate-300">
+                                DT: {report.weather?.downtimeHours || 0} Jam
+                              </div>
+                            </div>
                           </td>
                         )}
                       </tr>
                     );
                   })}
-                  <tr className="bg-slate-50 font-bold border-t border-black text-[7.5px] font-sans h-[22px]">
-                    <td colSpan={4} className="border-r border-black px-1 py-0.5 text-right">
-                      Downtime Hujan :
-                    </td>
-                    <td className="text-center font-mono font-bold text-blue-900 py-0.5">
-                      {report.weather?.downtimeHours || 0} Jam
-                    </td>
-                  </tr>
                 </tbody>
               </table>
             </div>
@@ -582,7 +550,7 @@ export const OfficialDailyReportView: React.FC<OfficialDailyReportViewProps> = (
 
         {/* Page Footer */}
         <div className="flex justify-between items-center text-[8px] font-mono text-slate-600 pt-1">
-          <div>Page 1</div>
+          <div>Page 1 of 1</div>
           <div>{report.docFooterCode || 'Daily Report-P2-ND000-JDU-09'}</div>
         </div>
       </div>

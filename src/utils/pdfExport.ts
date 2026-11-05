@@ -123,10 +123,24 @@ async function preloadLogoForPdf(url: string): Promise<{ dataUrl: string; format
 }
 
 /**
- * Generates an official standardized printable PDF for a Daily Report matching form AAA/CONS/FM-014 Rev01
- * Now directly embeds clean site photos without watermarks or GPS text overlays.
+ * Helper to compute standardized filename for daily report PDF
  */
-export async function exportDailyReportPdf(report: DailyReport, project: Project): Promise<void> {
+export function getDailyReportPdfFilename(report: DailyReport, project: Project): string {
+  const [yr, mo, da] = (report.reportDate || '2026-10-17').split('-');
+  const dateFormatted = `${da || '17'}/${mo || '10'}/${yr || '2026'}`;
+  const jenisPekerjaan = project.name || 'Renewal Tube Settler';
+  const namaKontraktor = report.contractorSignatory?.companyName || project.contractorName || 'PT. Bestindo Putra Mandiri';
+  // Clean filename for OS compatibility
+  const safePekerjaan = jenisPekerjaan.replace(/[/\\?%*:|"<>]/g, '-');
+  const safeKontraktor = namaKontraktor.replace(/[/\\?%*:|"<>]/g, '-');
+  const safeDate = `${da || '17'}-${mo || '10'}-${yr || '2026'}`;
+  return `${safeDate}_${safePekerjaan}_${safeKontraktor}.pdf`;
+}
+
+/**
+ * Builds the official jsPDF instance matching form AAA/CONS/FM-014 Rev01
+ */
+export async function generateDailyReportPdfDoc(report: DailyReport, project: Project): Promise<jsPDF> {
   // Preload project logo if provided
   let preloadedLogo: { dataUrl: string; format: 'JPEG' | 'PNG'; width: number; height: number } | null = null;
   if (project.logoUrl) {
@@ -736,14 +750,25 @@ export async function exportDailyReportPdf(report: DailyReport, project: Project
   doc.text('Page 1 of 1', leftX + 2, finalDocBottomY + 3.8);
   doc.text(report.docFooterCode || 'Daily Report-P2-ND000-JDU-09', rightX - 2, finalDocBottomY + 3.8, { align: 'right' });
 
-  // Trigger download with user-specified format: tanggal/bulan/tahun_Jenis Pekerjaan_Nama Kontraktor
-  // Contoh: 17/10/2026_Renewal Tube Settler_PT. Bestindo Putra Mandiri
-  const [yr, mo, da] = (report.reportDate || '2026-10-17').split('-');
-  const dateFormatted = `${da || '17'}/${mo || '10'}/${yr || '2026'}`;
-  const jenisPekerjaan = project.name || 'Renewal Tube Settler';
-  const namaKontraktor = report.contractorSignatory?.companyName || project.contractorName || 'PT. Bestindo Putra Mandiri';
-  const downloadFilename = `${dateFormatted}_${jenisPekerjaan}_${namaKontraktor}.pdf`;
-  doc.save(downloadFilename);
+  return doc;
+}
+
+/**
+ * Downloads the official Daily Report PDF file matching form AAA/CONS/FM-014 Rev01
+ */
+export async function exportDailyReportPdf(report: DailyReport, project: Project): Promise<void> {
+  const doc = await generateDailyReportPdfDoc(report, project);
+  const filename = getDailyReportPdfFilename(report, project);
+  doc.save(filename);
+}
+
+/**
+ * Generates a Blob URL of the exact Daily Report PDF for 1:1 preview in iframe/browser
+ */
+export async function generateDailyReportPdfBlobUrl(report: DailyReport, project: Project): Promise<string> {
+  const doc = await generateDailyReportPdfDoc(report, project);
+  const blob = doc.output('blob');
+  return URL.createObjectURL(blob);
 }
 
 /**
