@@ -76,6 +76,11 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   const [logoModalUrl, setLogoModalUrl] = useState<string>('');
   const [logoModalAssignedUsers, setLogoModalAssignedUsers] = useState<string[]>([]);
 
+  // State for Contractor "Logo PDF" modal
+  const [projectForContractorLogo, setProjectForContractorLogo] = useState<Project | null>(null);
+  const [contractorLogoUrl, setContractorLogoUrl] = useState<string>('');
+  const contractorFileInputRef = useRef<HTMLInputElement>(null);
+
   // State for "Kelola Akun Kontraktor" modal
   const [newAccUsername, setNewAccUsername] = useState('');
   const [newAccPassword, setNewAccPassword] = useState('1234');
@@ -231,6 +236,25 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     setProjectForLogoAccess(proj);
     setLogoModalUrl(proj.logoUrl || '');
     setLogoModalAssignedUsers(proj.assignedContractorUsernames || []);
+  };
+
+  // Open Contractor "Logo PDF" modal
+  const openContractorLogoModal = (proj: Project) => {
+    setProjectForContractorLogo(proj);
+    setContractorLogoUrl(proj.logoUrl || '');
+  };
+
+  // Save Contractor "Logo PDF" changes
+  const handleSaveContractorLogo = () => {
+    if (!projectForContractorLogo) return;
+
+    const updatedProj: Project = {
+      ...projectForContractorLogo,
+      logoUrl: contractorLogoUrl || undefined,
+    };
+
+    onUpdateProject?.(updatedProj);
+    setProjectForContractorLogo(null);
   };
 
   // Save "Logo & Akses" changes
@@ -831,12 +855,27 @@ Gunakan kredensial di atas untuk masuk ke sistem pelaporan harian.`;
                       </span>
                     )}
 
-                    {/* Logo Project Indicator */}
-                    {proj.logoUrl && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-700" title="Logo Kop PDF Terpasang">
-                        <ImageIcon className="w-3 h-3 text-blue-600" />
+                    {/* Fitur Logo PDF untuk Kontraktor & Indikator Logo untuk PMO */}
+                    {currentRole === 'contractor' ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openContractorLogoModal(proj);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-700 text-xs font-semibold cursor-pointer transition-colors shadow-2xs"
+                        title="Upload atau ganti Logo PDF untuk Laporan Harian"
+                      >
+                        <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
                         <span>Logo PDF</span>
-                      </span>
+                      </button>
+                    ) : (
+                      proj.logoUrl && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-700" title="Logo Kop PDF Terpasang">
+                          <ImageIcon className="w-3 h-3 text-blue-600" />
+                          <span>Logo PDF</span>
+                        </span>
+                      )
                     )}
                   </div>
 
@@ -1357,6 +1396,143 @@ Gunakan kredensial di atas untuk masuk ke sistem pelaporan harian.`;
                 >
                   <Check className="w-4 h-4" />
                   <span>Simpan Perubahan Logo & Akses</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2B: UPLOAD LOGO PDF KHUSUS KONTRAKTOR */}
+      {projectForContractorLogo && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full my-auto p-5 sm:p-6 space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <ImageIcon className="w-5 h-5 text-blue-600" />
+                  <span>Logo PDF Laporan Harian</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Proyek: <strong className="text-slate-800">{projectForContractorLogo.name}</strong> ({projectForContractorLogo.code})
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setProjectForContractorLogo(null)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                title="Tutup (Esc)"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <p className="text-slate-600 leading-relaxed">
+                Tambahkan atau perbarui logo perusahaan kontraktor Anda. Logo ini otomatis tampil pada bagian kop kiri <strong>Laporan Harian (AAA/CONS/FM-014)</strong> saat pratinjau dan ekspor dokumen PDF resmi.
+              </p>
+
+              {/* Upload Box */}
+              <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                    <Upload className="w-4 h-4 text-blue-600" />
+                    <span>File Logo Perusahaan</span>
+                  </span>
+
+                  <input
+                    type="file"
+                    ref={contractorFileInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleLogoUpload(file, setContractorLogoUrl);
+                    }}
+                  />
+
+                  <div className="flex items-center gap-2">
+                    {contractorLogoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setContractorLogoUrl('')}
+                        className="px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition-colors cursor-pointer"
+                      >
+                        Hapus
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => contractorFileInputRef.current?.click()}
+                      className="px-3.5 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{contractorLogoUrl ? 'Ganti Logo' : 'Pilih Logo'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Pratinjau Kop Header 1:1 Cetak PDF */}
+                <div className="bg-white border-2 border-slate-800 rounded-lg p-2.5 space-y-1 shadow-xs">
+                  <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">
+                    Pratinjau Kop Header Laporan Harian (1:1 Cetak PDF):
+                  </div>
+
+                  <div className="border border-black p-2 flex items-center justify-between gap-2 min-h-[52px] bg-white overflow-hidden w-full">
+                    {/* Left: Uploaded Logo */}
+                    <div className="w-[105px] flex items-center justify-start shrink-0">
+                      {contractorLogoUrl ? (
+                        <img
+                          src={contractorLogoUrl}
+                          alt="Logo Laporan Harian"
+                          className="max-h-11 max-w-[100px] object-contain"
+                        />
+                      ) : (
+                        <div className="h-9 w-24 border border-dashed border-slate-300 rounded flex items-center justify-center text-[9px] text-slate-400 italic text-center px-0.5 leading-none">
+                          (Belum Ada Logo)
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Center: Title */}
+                    <div className="text-center flex-1 min-w-0 px-1">
+                      <div className="text-xs font-black tracking-wider uppercase text-slate-950 leading-tight truncate">
+                        LAPORAN HARIAN
+                      </div>
+                      <div className="text-[9px] font-bold tracking-wide uppercase text-slate-800 leading-tight truncate">
+                        DAILY ACTIVITY REPORT
+                      </div>
+                    </div>
+
+                    {/* Right: Form Metadata */}
+                    <div className="shrink-0 text-right text-[8px] space-y-0.5 font-medium text-slate-800 leading-tight pl-1">
+                      <div className="whitespace-nowrap">No. Form: <span className="font-mono font-bold">AAA/CONS/FM-014</span></div>
+                      <div className="whitespace-nowrap">Tgl: 14 Juli 2025</div>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-slate-500 italic">
+                  * Format: PNG, JPG, JPEG, SVG, WebP. Disarankan gambar dengan latar transparan / rasio horizontal agar pas di kop PDF.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setProjectForContractorLogo(null)}
+                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveContractorLogo}
+                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Simpan Logo PDF</span>
                 </button>
               </div>
             </div>
